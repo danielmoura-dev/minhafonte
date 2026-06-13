@@ -5,7 +5,9 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
+use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Seller\SellerController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -64,7 +66,18 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'sellers.destroy',
     ]);
 
-    // Placeholders
-    Route::get('/produtos', fn () => Inertia::render('Dashboard/Index'))->name('products.index');
+    // Produtos
+    Route::resource('produtos', ProductController::class)->parameters([
+        'produtos' => 'product',
+    ])->names([
+        'index'   => 'products.index',
+        'create'  => 'products.create',
+        'store'   => 'products.store',
+        'edit'    => 'products.edit',
+        'update'  => 'products.update',
+        'destroy' => 'products.destroy',
+    ]);
+
+    // Placeholder
     Route::get('/vendas', fn () => Inertia::render('Dashboard/Index'))->name('sales.index');
 });

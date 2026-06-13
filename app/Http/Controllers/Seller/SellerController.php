@@ -97,6 +97,7 @@ class SellerController extends Controller
         $this->authorize('update', $seller);
 
         $data = $request->validated();
+        unset($data['photo']);
 
         if ($request->hasFile('photo')) {
             if ($seller->photo) {

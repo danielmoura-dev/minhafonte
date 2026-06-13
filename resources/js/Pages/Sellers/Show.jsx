@@ -45,9 +45,17 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                         <ArrowLeft size={16} strokeWidth={1.75} />
                     </Link>
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg shrink-0">
-                            {avatar}
-                        </div>
+                        {seller.photo ? (
+                            <img
+                                src={`/storage/${seller.photo}`}
+                                alt={seller.name}
+                                className="w-12 h-12 rounded-xl object-cover shrink-0"
+                            />
+                        ) : (
+                            <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg shrink-0">
+                                {avatar}
+                            </div>
+                        )}
                         <div>
                             <h1 className="text-xl font-bold text-gray-900">{seller.name}</h1>
                             <div className="flex items-center gap-2 mt-0.5">

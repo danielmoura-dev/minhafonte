@@ -123,19 +123,22 @@ export default function Sidebar() {
                         />
                     </NavGroup>
 
-                    <NavItem
-                        href={route('products.index')}
-                        icon={Package}
-                        label="Produtos"
-                        active={url.startsWith('/produtos')}
-                    />
-
-                    <NavItem
-                        href={route('sales.index')}
-                        icon={ShoppingCart}
-                        label="Vendas"
-                        active={url.startsWith('/vendas')}
-                    />
+                    <NavGroup
+    icon={Package}
+    label="Produtos"
+    defaultOpen={url.startsWith('/produtos')}
+>
+    <SubNavItem
+        href={route('products.create')}
+        label="Cadastrar"
+        active={url === '/produtos/criar'}
+    />
+    <SubNavItem
+        href={route('products.index')}
+        label="Gerenciar"
+        active={url === '/produtos'}
+    />
+</NavGroup>
                 </div>
 
                 <div className="mt-3">

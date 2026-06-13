@@ -1,28 +1,33 @@
 import AppLayout from '@/Layouts/AppLayout';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Search, Eye, Pencil, Trash2, Users } from 'lucide-react';
-import Badge from '@/Components/UI/Badge';
+import { Plus, Search, Pencil, Trash2, Package } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
-export default function SellersIndex({ sellers, filters }) {
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [sellerType, setSellerType] = useState(filters.seller_type ?? '');
-    const [deleting, setDeleting] = useState(null);
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style:    'currency',
+        currency: 'BRL',
+    }).format(value ?? 0);
+}
+
+export default function ProductsIndex({ products, filters }) {
+    const [search, setSearch]               = useState(filters.search ?? '');
+    const [deleting, setDeleting]           = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
 
     function handleSearch(e) {
         e.preventDefault();
-        router.get(route('sellers.index'), { search, seller_type: sellerType }, {
+        router.get(route('products.index'), { search }, {
             preserveState: true,
-            replace: true,
+            replace:       true,
         });
     }
 
     function handleDelete() {
         setLoadingDelete(true);
-        router.delete(route('sellers.destroy', deleting.id), {
+        router.delete(route('products.destroy', deleting.id), {
             onFinish: () => {
                 setLoadingDelete(false);
                 setDeleting(null);
@@ -31,18 +36,18 @@ export default function SellersIndex({ sellers, filters }) {
     }
 
     return (
-        <AppLayout title="Vendedores">
+        <AppLayout title="Produtos">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Vendedores</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
                     <p className="text-sm text-gray-400 mt-1">
-                        {sellers.total} vendedor{sellers.total !== 1 ? 'es' : ''} cadastrado{sellers.total !== 1 ? 's' : ''}
+                        {products.total} produto{products.total !== 1 ? 's' : ''} cadastrado{products.total !== 1 ? 's' : ''}
                     </p>
                 </div>
                 <Link
-                    href={route('sellers.create')}
+                    href={route('products.create')}
                     className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
                 >
                     <Plus size={16} strokeWidth={2} />
@@ -58,19 +63,10 @@ export default function SellersIndex({ sellers, filters }) {
                         type="text"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        placeholder="Buscar por nome, e-mail ou cidade..."
+                        placeholder="Buscar por nome ou código..."
                         className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
                     />
                 </div>
-                <select
-                    value={sellerType}
-                    onChange={e => setSellerType(e.target.value)}
-                    className="px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-white"
-                >
-                    <option value="">Todos os tipos</option>
-                    <option value="commissioned">Comissionado</option>
-                    <option value="reseller">Revendedor</option>
-                </select>
                 <button
                     type="submit"
                     className="px-4 py-2.5 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition"
@@ -81,77 +77,63 @@ export default function SellersIndex({ sellers, filters }) {
 
             {/* Tabela */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {sellers.data.length === 0 ? (
+                {products.data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <Users size={36} className="text-gray-300 mb-3" strokeWidth={1.5} />
-                        <p className="text-sm font-medium text-gray-500">Nenhum vendedor encontrado</p>
-                        <p className="text-xs text-gray-400 mt-1">Cadastre o primeiro vendedor para começar.</p>
+                        <Package size={36} className="text-gray-300 mb-3" strokeWidth={1.5} />
+                        <p className="text-sm font-medium text-gray-500">Nenhum produto encontrado</p>
+                        <p className="text-xs text-gray-400 mt-1">Cadastre o primeiro produto para começar.</p>
                     </div>
                 ) : (
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-gray-100 bg-gray-50">
-                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Nome</th>
-                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Tipo</th>
-                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Cidade / UF</th>
-                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Telefone</th>
+                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Produto</th>
+                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Código</th>
+                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Valor padrão</th>
                                 <th className="px-5 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {sellers.data.map(seller => (
-                                <tr key={seller.id} className="hover:bg-gray-50 transition">
+                            {products.data.map(product => (
+                                <tr key={product.id} className="hover:bg-gray-50 transition">
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
-                                            {seller.photo ? (
+                                            {product.photo ? (
                                                 <img
-                                                    src={`/storage/${seller.photo}`}
-                                                    alt={seller.name}
-                                                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                                                    src={`/storage/${product.photo}`}
+                                                    alt={product.name}
+                                                    className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-xs shrink-0">
-                                                    {seller.name.charAt(0).toUpperCase()}
+                                                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                                                    <Package size={16} className="text-gray-400" strokeWidth={1.75} />
                                                 </div>
                                             )}
                                             <div>
-                                                <p className="font-medium text-gray-900">{seller.name}</p>
-                                                {seller.email && (
-                                                    <p className="text-xs text-gray-400">{seller.email}</p>
+                                                <p className="font-medium text-gray-900">{product.name}</p>
+                                                {product.description && (
+                                                    <p className="text-xs text-gray-400 truncate max-w-xs">{product.description}</p>
                                                 )}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-3.5">
-                                        <div className="flex flex-col gap-1">
-                                            <Badge value={seller.seller_type} />
-                                            <Badge value={seller.person_type} />
-                                        </div>
+                                    <td className="px-5 py-3.5 text-gray-500">
+                                        {product.code ?? <span className="text-gray-300">—</span>}
                                     </td>
-                                    <td className="px-5 py-3.5 text-gray-600">
-                                        {seller.city} / {seller.state}
-                                    </td>
-                                    <td className="px-5 py-3.5 text-gray-600">
-                                        {seller.phone}
+                                    <td className="px-5 py-3.5 font-medium text-gray-900">
+                                        {formatCurrency(product.default_price)}
                                     </td>
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center justify-end gap-1">
                                             <Link
-                                                href={route('sellers.show', seller.id)}
-                                                className="p-2 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
-                                                title="Visualizar"
-                                            >
-                                                <Eye size={16} strokeWidth={1.75} />
-                                            </Link>
-                                            <Link
-                                                href={route('sellers.edit', seller.id)}
+                                                href={route('products.edit', product.id)}
                                                 className="p-2 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition"
                                                 title="Editar"
                                             >
                                                 <Pencil size={16} strokeWidth={1.75} />
                                             </Link>
                                             <button
-                                                onClick={() => setDeleting(seller)}
+                                                onClick={() => setDeleting(product)}
                                                 className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
                                                 title="Excluir"
                                             >
@@ -166,11 +148,11 @@ export default function SellersIndex({ sellers, filters }) {
                 )}
             </div>
 
-            <Pagination links={sellers.links} />
+            <Pagination links={products.links} />
 
             <ConfirmModal
                 show={!!deleting}
-                title="Remover vendedor"
+                title="Remover produto"
                 message={`Tem certeza que deseja remover "${deleting?.name}"? Esta ação não pode ser desfeita.`}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
