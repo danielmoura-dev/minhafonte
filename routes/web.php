@@ -5,13 +5,13 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
+use App\Http\Controllers\Seller\SellerController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Redirecionar raiz
 Route::get('/', fn () => redirect()->route('login'));
 
-// Rotas públicas (guest)
+// Guest
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedCompanyController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedCompanyController::class, 'store'])->name('login.store');
@@ -26,10 +26,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/redefinir-senha', [NewPasswordController::class, 'store'])->name('password.update');
 });
 
-// Rotas autenticadas
+// Autenticado
 Route::middleware('auth')->group(function () {
 
-    // Logout
     Route::post('/logout', [AuthenticatedCompanyController::class, 'destroy'])->name('logout');
 
     // Verificação de e-mail
@@ -41,17 +40,31 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
-    // Rotas protegidas (requer e-mail verificado ou acesso com modal de aviso)
+    // Dashboard
     Route::get('/dashboard', function () {
+        $companyId = Auth::id();
+        $sellers   = \App\Models\Seller::fromCompany($companyId)->get();
+
         return Inertia::render('Dashboard/Index', [
-            'totalSellers'  => 0,
-            'birthdayToday' => [],
+            'totalSellers'  => $sellers->count(),
+            'birthdayToday' => $sellers->filter(fn ($s) => $s->isBirthdayToday())->values(),
         ]);
     })->name('dashboard');
 
+    // Vendedores
+    Route::resource('vendedores', SellerController::class)->parameters([
+        'vendedores' => 'seller',
+    ])->names([
+        'index'   => 'sellers.index',
+        'create'  => 'sellers.create',
+        'store'   => 'sellers.store',
+        'show'    => 'sellers.show',
+        'edit'    => 'sellers.edit',
+        'update'  => 'sellers.update',
+        'destroy' => 'sellers.destroy',
+    ]);
+
     // Placeholders
-    Route::get('/vendedores', fn () => Inertia::render('Dashboard/Index'))->name('sellers.index');
-    Route::get('/vendedores/criar', fn () => Inertia::render('Dashboard/Index'))->name('sellers.create');
     Route::get('/produtos', fn () => Inertia::render('Dashboard/Index'))->name('products.index');
     Route::get('/vendas', fn () => Inertia::render('Dashboard/Index'))->name('sales.index');
 });
