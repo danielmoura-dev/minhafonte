@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Product;
+use App\Models\Sale;
 use App\Models\Seller;
 use App\Policies\ProductPolicy;
+use App\Policies\SalePolicy;
 use App\Policies\SellerPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -17,5 +19,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Seller::class, SellerPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(Sale::class, SalePolicy::class);
     }
 }

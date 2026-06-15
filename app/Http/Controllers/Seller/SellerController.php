@@ -63,23 +63,52 @@ class SellerController extends Controller
             ->with('success', 'Vendedor cadastrado com sucesso!');
     }
 
-    public function show(Seller $seller): Response
+    public function show(Request $request, Seller $seller): Response
     {
         $this->authorize('view', $seller);
 
-        $seller->load([]);
+        $period = $request->get('period', 'month');
+        $month  = $request->get('month', now()->format('Y-m'));
+
+        $query = \App\Models\Sale::where('seller_id', $seller->id)->with('product');
+
+        if ($period === 'month' && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            [$year, $mon] = explode('-', $month);
+            $query->whereYear('sale_date', $year)->whereMonth('sale_date', $mon);
+        }
+
+        $sales = $query->orderByDesc('sale_date')->get();
+
+        $totalSold       = $sales->sum('total');
+        $totalReceived   = $sales->where('payment_received', true)->sum('total');
+        $totalPending    = $sales->where('payment_received', false)->sum('total');
+        $totalCommission = $sales->sum('commission_total');
+
+        $topProducts = $sales->groupBy('product_id')->map(fn ($g) => [
+            'name'     => $g->first()->product?->name ?? 'Produto removido',
+            'quantity' => $g->sum('quantity'),
+            'total'    => $g->sum('total'),
+        ])->sortByDesc('total')->values()->take(8);
+
+        $commissions = $sales->filter(fn ($s) => $s->commission_total > 0)->values();
+        $payments    = $sales->filter(fn ($s) => $s->payment_received)->values();
 
         return Inertia::render('Sellers/Show', [
-            'seller' => $seller,
+            'seller'  => $seller,
+            'period'  => $period,
+            'month'   => $month,
             'summary' => [
-                'total_sold'       => 0,
-                'total_received'   => 0,
-                'total_pending'    => 0,
-                'total_commission' => 0,
+                'total_sold'       => $totalSold,
+                'total_received'   => $totalReceived,
+                'total_pending'    => $totalPending,
+                'total_commission' => $totalCommission,
             ],
-            'sales'       => [],
-            'commissions' => [],
-            'payments'    => [],
+            'sales'              => $sales,
+            'commissions'        => $commissions,
+            'payments'           => $payments,
+            'topProducts'        => $topProducts,
+            'hasPendingPayment'  => $sales->contains(fn ($s) => !$s->payment_received),
+            'hasPendingCommission' => $commissions->contains(fn ($s) => !$s->commission_paid),
         ]);
     }
 

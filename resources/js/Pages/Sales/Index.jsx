@@ -1,0 +1,282 @@
+import AppLayout from '@/Layouts/AppLayout';
+import { Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle, XCircle } from 'lucide-react';
+import Pagination from '@/Components/UI/Pagination';
+import ConfirmModal from '@/Components/UI/ConfirmModal';
+import Badge from '@/Components/UI/Badge';
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(value ?? 0);
+}
+
+function formatDate(value) {
+    if (!value) return '—';
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+}
+
+function ToggleStatus({ saleId, field, active, loading, onToggle }) {
+    const isLoading = loading === `${saleId}-${field}`;
+    return (
+        <button
+            onClick={() => onToggle(saleId, field)}
+            disabled={isLoading}
+            title={active ? 'Clique para desmarcar' : 'Clique para marcar'}
+            className="p-1 rounded transition hover:scale-110 disabled:opacity-50"
+        >
+            {active
+                ? <CheckCircle size={18} className="text-green-500" strokeWidth={2} />
+                : <XCircle size={18} className="text-gray-300 hover:text-gray-400" strokeWidth={2} />
+            }
+        </button>
+    );
+}
+
+export default function SalesIndex({ sales, sellers, filters }) {
+    const [form, setForm] = useState(filters);
+    const [deleting, setDeleting] = useState(null);
+    const [loadingDelete, setLoadingDelete] = useState(false);
+    const [loadingToggle, setLoadingToggle] = useState(null);
+
+    function handleToggle(saleId, field) {
+        setLoadingToggle(`${saleId}-${field}`);
+        router.patch(route('sales.toggle', saleId), { field }, {
+            preserveScroll: true,
+            onFinish: () => setLoadingToggle(null),
+        });
+    }
+
+    function handleFilter(e) {
+        e.preventDefault();
+        router.get(route('sales.index'), form, {
+            preserveState: true,
+            replace: true,
+        });
+    }
+
+    function handleReset() {
+        setForm({});
+        router.get(route('sales.index'), {}, { replace: true });
+    }
+
+    function handleDelete() {
+        setLoadingDelete(true);
+        router.delete(route('sales.destroy', deleting.id), {
+            onFinish: () => {
+                setLoadingDelete(false);
+                setDeleting(null);
+            },
+        });
+    }
+
+    return (
+        <AppLayout title="Vendas">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Vendas</h1>
+                    <p className="text-sm text-gray-400 mt-1">
+                        {sales.total} venda{sales.total !== 1 ? 's' : ''} encontrada{sales.total !== 1 ? 's' : ''}
+                    </p>
+                </div>
+                <Link
+                    href={route('sales.create')}
+                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
+                >
+                    <Plus size={16} strokeWidth={2} />
+                    Registrar
+                </Link>
+            </div>
+
+            {/* Filtros */}
+            <form onSubmit={handleFilter} className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <select
+                        value={form.seller_id ?? ''}
+                        onChange={e => setForm({ ...form, seller_id: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                    >
+                        <option value="">Todos os vendedores</option>
+                        {sellers.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={form.seller_type ?? ''}
+                        onChange={e => setForm({ ...form, seller_type: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                    >
+                        <option value="">Todos os tipos</option>
+                        <option value="commissioned">Comissionado</option>
+                        <option value="reseller">Revendedor</option>
+                    </select>
+
+                    <input
+                        type="date"
+                        value={form.date_from ?? ''}
+                        onChange={e => setForm({ ...form, date_from: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                        placeholder="Data inicial"
+                    />
+
+                    <input
+                        type="date"
+                        value={form.date_to ?? ''}
+                        onChange={e => setForm({ ...form, date_to: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                        placeholder="Data final"
+                    />
+
+                    <select
+                        value={form.payment_received ?? ''}
+                        onChange={e => setForm({ ...form, payment_received: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                    >
+                        <option value="">Pagamento</option>
+                        <option value="true">Recebido</option>
+                        <option value="false">Pendente</option>
+                    </select>
+
+                    <select
+                        value={form.commission_paid ?? ''}
+                        onChange={e => setForm({ ...form, commission_paid: e.target.value })}
+                        className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                    >
+                        <option value="">Comissão</option>
+                        <option value="true">Paga</option>
+                        <option value="false">Pendente</option>
+                    </select>
+                </div>
+                <div className="flex gap-2 mt-3">
+                    <button
+                        type="submit"
+                        className="px-4 py-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition"
+                    >
+                        Filtrar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleReset}
+                        className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-lg transition"
+                    >
+                        Limpar
+                    </button>
+                </div>
+            </form>
+
+            {/* Tabela */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {sales.data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <ShoppingCart size={36} className="text-gray-300 mb-3" strokeWidth={1.5} />
+                        <p className="text-sm font-medium text-gray-500">Nenhuma venda encontrada</p>
+                        <p className="text-xs text-gray-400 mt-1">Registre a primeira venda para começar.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-100 bg-gray-50">
+                                    <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Data</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Vendedor</th>
+                                    <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Produto</th>
+                                    <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Qtd</th>
+                                    <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Total</th>
+                                    <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Comissão</th>
+                                    <th className="text-center px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Pgto</th>
+                                    <th className="text-center px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Comis.</th>
+                                    <th className="px-5 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {sales.data.map(sale => (
+                                    <tr key={sale.id} className="hover:bg-gray-50 transition">
+                                        <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                                            {formatDate(sale.sale_date)}
+                                        </td>
+                                        <td className="px-5 py-3.5">
+                                            <p className="font-medium text-gray-900">{sale.seller?.name}</p>
+                                            <Badge value={sale.seller?.seller_type} />
+                                        </td>
+                                        <td className="px-5 py-3.5 text-gray-700">
+                                            {sale.product?.name}
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right text-gray-600">
+                                            {sale.quantity}
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right font-semibold text-gray-900">
+                                            {formatCurrency(sale.total)}
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right text-violet-600 font-medium">
+                                            {sale.commission_total
+                                                ? formatCurrency(sale.commission_total)
+                                                : <span className="text-gray-300">—</span>
+                                            }
+                                        </td>
+                                        <td className="px-5 py-3.5 text-center">
+                                            <div className="flex justify-center">
+                                                <ToggleStatus
+                                                    saleId={sale.id}
+                                                    field="payment_received"
+                                                    active={sale.payment_received}
+                                                    loading={loadingToggle}
+                                                    onToggle={handleToggle}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-3.5 text-center">
+                                            <div className="flex justify-center">
+                                                <ToggleStatus
+                                                    saleId={sale.id}
+                                                    field="commission_paid"
+                                                    active={sale.commission_paid}
+                                                    loading={loadingToggle}
+                                                    onToggle={handleToggle}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Link
+                                                    href={route('sales.edit', sale.id)}
+                                                    className="p-2 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil size={16} strokeWidth={1.75} />
+                                                </Link>
+                                                <button
+                                                    onClick={() => setDeleting(sale)}
+                                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} strokeWidth={1.75} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            <Pagination links={sales.links} />
+
+            <ConfirmModal
+                show={!!deleting}
+                title="Remover venda"
+                message={`Tem certeza que deseja remover esta venda de ${deleting?.seller?.name}? Esta ação não pode ser desfeita.`}
+                onConfirm={handleDelete}
+                onCancel={() => setDeleting(null)}
+                loading={loadingDelete}
+            />
+        </AppLayout>
+    );
+}

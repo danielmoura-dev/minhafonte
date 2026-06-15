@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
 use App\Http\Controllers\Product\ProductController;
+use App\Http\Controllers\Sale\SaleController;
 use App\Http\Controllers\Seller\SellerController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -43,11 +44,57 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
 
     // Dashboard
-    Route::get('/dashboard', function () {
+    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
         $companyId = Auth::id();
-        $sellers   = \App\Models\Seller::fromCompany($companyId)->get();
+        $period    = $request->get('period', 'month');
+        $month     = $request->get('month', now()->format('Y-m'));
+
+        $salesQuery = \App\Models\Sale::fromCompany($companyId)->with(['seller', 'product']);
+
+        if ($period === 'month' && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            [$year, $mon] = explode('-', $month);
+            $salesQuery->whereYear('sale_date', $year)->whereMonth('sale_date', $mon);
+        }
+
+        $sales = $salesQuery->get();
+
+        $topProducts = $sales->groupBy('product_id')->map(fn ($g) => [
+            'name'     => $g->first()->product?->name ?? 'Produto removido',
+            'quantity' => $g->sum('quantity'),
+            'total'    => $g->sum('total'),
+        ])->sortByDesc('total')->values()->take(8);
+
+        $topSellers = $sales->groupBy('seller_id')->map(fn ($g) => [
+            'name'        => $g->first()->seller?->name ?? 'Vendedor removido',
+            'sales_count' => $g->count(),
+            'total'       => $g->sum('total'),
+            'commission'  => $g->sum('commission_total'),
+        ])->sortByDesc('total')->values()->take(8);
+
+        $byCity = $sales->groupBy(fn ($s) => $s->seller?->city ?? 'Não informada')
+            ->map(fn ($g, $city) => [
+                'city'  => $city,
+                'count' => $g->count(),
+                'total' => $g->sum('total'),
+            ])->sortByDesc('total')->values()->take(8);
+
+        $sellers = \App\Models\Seller::fromCompany($companyId)->get();
 
         return Inertia::render('Dashboard/Index', [
+            'period' => $period,
+            'month'  => $month,
+            'kpis'   => [
+                'total_sold'           => $sales->sum('total'),
+                'total_received'       => $sales->where('payment_received', true)->sum('total'),
+                'total_pending'        => $sales->where('payment_received', false)->sum('total'),
+                'sales_count'          => $sales->count(),
+                'commission_total'     => $sales->sum('commission_total'),
+                'commission_paid'      => $sales->where('commission_paid', true)->sum('commission_total'),
+                'commission_pending'   => $sales->where('commission_paid', false)->filter(fn ($s) => $s->commission_total > 0)->sum('commission_total'),
+            ],
+            'topProducts'   => $topProducts,
+            'topSellers'    => $topSellers,
+            'byCity'        => $byCity,
             'totalSellers'  => $sellers->count(),
             'birthdayToday' => $sellers->filter(fn ($s) => $s->isBirthdayToday())->values(),
         ]);
@@ -78,6 +125,17 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'products.destroy',
     ]);
 
-    // Placeholder
-    Route::get('/vendas', fn () => Inertia::render('Dashboard/Index'))->name('sales.index');
+    // Vendas
+    Route::resource('vendas', SaleController::class)->parameters([
+        'vendas' => 'sale',
+    ])->names([
+        'index'   => 'sales.index',
+        'create'  => 'sales.create',
+        'store'   => 'sales.store',
+        'edit'    => 'sales.edit',
+        'update'  => 'sales.update',
+        'destroy' => 'sales.destroy',
+    ]);
+
+    Route::patch('/vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
 });

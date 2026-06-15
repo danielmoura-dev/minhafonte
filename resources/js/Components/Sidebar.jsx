@@ -17,11 +17,10 @@ function NavItem({ href, icon: Icon, label, active }) {
     return (
         <Link
             href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
                     ? 'bg-primary-50 text-primary-700'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`}
+                }`}
         >
             <Icon size={17} strokeWidth={1.75} />
             <span>{label}</span>
@@ -60,11 +59,10 @@ function SubNavItem({ href, label, active }) {
     return (
         <Link
             href={href}
-            className={`block px-2 py-2 rounded-md text-sm transition-colors ${
-                active
+            className={`block px-2 py-2 rounded-md text-sm transition-colors ${active
                     ? 'text-primary-700 font-medium'
                     : 'text-gray-500 hover:text-gray-900'
-            }`}
+                }`}
         >
             {label}
         </Link>
@@ -124,21 +122,39 @@ export default function Sidebar() {
                     </NavGroup>
 
                     <NavGroup
-    icon={Package}
-    label="Produtos"
-    defaultOpen={url.startsWith('/produtos')}
->
-    <SubNavItem
-        href={route('products.create')}
-        label="Cadastrar"
-        active={url === '/produtos/criar'}
-    />
-    <SubNavItem
-        href={route('products.index')}
-        label="Gerenciar"
-        active={url === '/produtos'}
-    />
-</NavGroup>
+                        icon={Package}
+                        label="Produtos"
+                        defaultOpen={url.startsWith('/produtos')}
+                    >
+                        <SubNavItem
+                            href={route('products.create')}
+                            label="Cadastrar"
+                            active={url === '/produtos/criar'}
+                        />
+                        <SubNavItem
+                            href={route('products.index')}
+                            label="Gerenciar"
+                            active={url === '/produtos'}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={ShoppingCart}
+                        label="Vendas"
+                        defaultOpen={url.startsWith('/vendas')}
+                    >
+                        <SubNavItem
+                            href={route('sales.create')}
+                            label="Registrar"
+                            active={url === '/vendas/criar'}
+                        />
+                        <SubNavItem
+                            href={route('sales.index')}
+                            label="Gerenciar"
+                            active={url === '/vendas'}
+                        />
+                    </NavGroup>
+
                 </div>
 
                 <div className="mt-3">
