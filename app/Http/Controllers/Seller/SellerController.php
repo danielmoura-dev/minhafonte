@@ -71,52 +71,35 @@ class SellerController extends Controller
             ->with('success', 'Vendedor cadastrado com sucesso!');
     }
 
-    public function show(Request $request, Seller $seller): Response
+    public function show(Seller $seller): Response
     {
         $this->authorize('view', $seller);
 
-        $period = $request->get('period', 'month');
-        $month  = $request->get('month', now()->format('Y-m'));
+        $sales = \App\Models\Sale::where('seller_id', $seller->id)
+            ->with('product')
+            ->orderByDesc('sale_date')
+            ->get();
 
-        $query = \App\Models\Sale::where('seller_id', $seller->id)->with('product');
+        $commissions = $sales
+            ->whereNotNull('commission_total')
+            ->where('commission_total', '>', 0)
+            ->values();
 
-        if ($period === 'month' && preg_match('/^\d{4}-\d{2}$/', $month)) {
-            [$year, $mon] = explode('-', $month);
-            $query->whereYear('sale_date', $year)->whereMonth('sale_date', $mon);
-        }
-
-        $sales = $query->orderByDesc('sale_date')->get();
-
-        $totalSold       = $sales->sum('total');
-        $totalReceived   = $sales->where('payment_received', true)->sum('total');
-        $totalPending    = $sales->where('payment_received', false)->sum('total');
-        $totalCommission = $sales->sum('commission_total');
-
-        $topProducts = $sales->groupBy('product_id')->map(fn ($g) => [
-            'name'     => $g->first()->product?->name ?? 'Produto removido',
-            'quantity' => $g->sum('quantity'),
-            'total'    => $g->sum('total'),
-        ])->sortByDesc('total')->values()->take(8);
-
-        $commissions = $sales->filter(fn ($s) => $s->commission_total > 0)->values();
-        $payments    = $sales->values();
+        $payments = $sales
+            ->where('payment_received', true)
+            ->values();
 
         return Inertia::render('Sellers/Show', [
             'seller'  => $seller,
-            'period'  => $period,
-            'month'   => $month,
             'summary' => [
-                'total_sold'       => $totalSold,
-                'total_received'   => $totalReceived,
-                'total_pending'    => $totalPending,
-                'total_commission' => $totalCommission,
+                'total_sold'       => $sales->sum('total'),
+                'total_received'   => $sales->where('payment_received', true)->sum('total'),
+                'total_pending'    => $sales->where('payment_received', false)->sum('total'),
+                'total_commission' => $sales->sum('commission_total'),
             ],
-            'sales'              => $sales,
-            'commissions'        => $commissions,
-            'payments'           => $payments,
-            'topProducts'        => $topProducts,
-            'hasPendingPayment'  => $sales->contains(fn ($s) => !$s->payment_received),
-            'hasPendingCommission' => $commissions->contains(fn ($s) => !$s->commission_paid),
+            'sales'       => $sales,
+            'commissions' => $commissions,
+            'payments'    => $payments,
         ]);
     }
 

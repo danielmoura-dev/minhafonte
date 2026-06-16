@@ -18,8 +18,8 @@ function NavItem({ href, icon: Icon, label, active }) {
         <Link
             href={href}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
         >
             <Icon size={17} strokeWidth={1.75} />
@@ -60,8 +60,8 @@ function SubNavItem({ href, label, active }) {
         <Link
             href={href}
             className={`block px-2 py-2 rounded-md text-sm transition-colors ${active
-                    ? 'text-primary-700 font-medium'
-                    : 'text-gray-500 hover:text-gray-900'
+                ? 'text-primary-700 font-medium'
+                : 'text-gray-500 hover:text-gray-900'
                 }`}
         >
             {label}
@@ -162,10 +162,16 @@ export default function Sidebar() {
                         Em breve
                     </p>
 
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed select-none">
+                    <Link
+                        href={route('raw-materials.index')}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed select-none pointer-events-none"
+                    >
                         <FlaskConical size={17} strokeWidth={1.75} />
                         <span>Matéria Prima</span>
-                    </div>
+                        <span className="ml-auto text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">
+                            Em breve
+                        </span>
+                    </Link>
                 </div>
             </nav>
 
