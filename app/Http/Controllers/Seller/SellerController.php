@@ -21,6 +21,7 @@ class SellerController extends Controller
         $this->authorize('viewAny', Seller::class);
 
         $sellers = Seller::fromCompany(Auth::id())
+            ->withCount('sales')
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('email', 'like', "%{$s}%")
@@ -29,13 +30,16 @@ class SellerController extends Controller
             ->when($request->seller_type, fn ($q, $t) =>
                 $q->where('seller_type', $t)
             )
+            ->when($request->filled('status'), fn ($q) =>
+                $q->where('is_active', $request->status === 'active')
+            )
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('Sellers/Index', [
             'sellers' => $sellers,
-            'filters' => $request->only('search', 'seller_type'),
+            'filters' => $request->only('search', 'seller_type', 'status'),
         ]);
     }
 
@@ -74,6 +78,8 @@ class SellerController extends Controller
     public function show(Seller $seller): Response
     {
         $this->authorize('view', $seller);
+
+        $seller->loadCount('sales');
 
         $sales = \App\Models\Sale::where('seller_id', $seller->id)
             ->with('product')
@@ -143,6 +149,12 @@ class SellerController extends Controller
     {
         $this->authorize('delete', $seller);
 
+        if ($seller->sales()->exists()) {
+            return redirect()
+                ->route('sellers.index')
+                ->with('error', "O vendedor \"{$seller->name}\" possui vendas registradas e não pode ser excluído. Use a opção de inativar.");
+        }
+
         if ($seller->photo) {
             Storage::disk('public')->delete($seller->photo);
         }
@@ -150,7 +162,7 @@ class SellerController extends Controller
         AuditService::log(
             event:       'seller.deleted',
             auditable:   $seller,
-            description: "Vendedor '{$seller->name}' removido.",
+            description: "Vendedor '{$seller->name}' removido permanentemente.",
         );
 
         $seller->delete();
@@ -158,5 +170,22 @@ class SellerController extends Controller
         return redirect()
             ->route('sellers.index')
             ->with('success', 'Vendedor removido com sucesso!');
+    }
+
+    public function toggleStatus(Seller $seller): RedirectResponse
+    {
+        $this->authorize('update', $seller);
+
+        $seller->update(['is_active' => ! $seller->is_active]);
+
+        $status = $seller->is_active ? 'ativado' : 'inativado';
+
+        AuditService::log(
+            event:       'seller.status_changed',
+            auditable:   $seller,
+            description: "Vendedor '{$seller->name}' {$status}.",
+        );
+
+        return back()->with('success', "Vendedor {$status} com sucesso!");
     }
 }

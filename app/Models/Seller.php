@@ -31,6 +31,7 @@ class Seller extends Authenticatable
         'responsible_birth_date',
         'seller_type',
         'default_commission',
+        'is_active',
         'first_access_at',
     ];
 
@@ -46,6 +47,7 @@ class Seller extends Authenticatable
             'responsible_birth_date' => 'date',
             'default_commission'     => 'decimal:2',
             'first_access_at'        => 'datetime',
+            'is_active'              => 'boolean',
             'password'               => 'hashed',
         ];
     }

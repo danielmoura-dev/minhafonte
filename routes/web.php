@@ -73,6 +73,8 @@ Route::middleware('auth')->group(function () {
         'update'  => 'sellers.update',
         'destroy' => 'sellers.destroy',
     ]);
+    Route::patch('vendedores/{seller}/toggle-status', [SellerController::class, 'toggleStatus'])
+        ->name('sellers.toggle-status');
 
     // Produtos
     Route::resource('produtos', ProductController::class)->parameters([

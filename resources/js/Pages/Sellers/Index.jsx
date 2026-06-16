@@ -1,20 +1,24 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Search, Eye, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Users, PowerOff, Power } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
 export default function SellersIndex({ sellers, filters }) {
-    const [search, setSearch] = useState(filters.search ?? '');
-    const [sellerType, setSellerType] = useState(filters.seller_type ?? '');
-    const [deleting, setDeleting] = useState(null);
+    const { flash } = usePage().props;
+    const [search, setSearch]           = useState(filters.search ?? '');
+    const [sellerType, setSellerType]   = useState(filters.seller_type ?? '');
+    const [status, setStatus]           = useState(filters.status ?? '');
+    const [deleting, setDeleting]       = useState(null);
+    const [toggling, setToggling]       = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
+    const [loadingToggle, setLoadingToggle] = useState(false);
 
     function handleSearch(e) {
         e.preventDefault();
-        router.get(route('sellers.index'), { search, seller_type: sellerType }, {
+        router.get(route('sellers.index'), { search, seller_type: sellerType, status }, {
             preserveState: true,
             replace: true,
         });
@@ -30,8 +34,30 @@ export default function SellersIndex({ sellers, filters }) {
         });
     }
 
+    function handleToggle() {
+        setLoadingToggle(true);
+        router.patch(route('sellers.toggle-status', toggling.id), {}, {
+            onFinish: () => {
+                setLoadingToggle(false);
+                setToggling(null);
+            },
+        });
+    }
+
     return (
         <AppLayout title="Vendedores">
+
+            {/* Flash messages */}
+            {flash?.error && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                    {flash.error}
+                </div>
+            )}
+            {flash?.success && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700">
+                    {flash.success}
+                </div>
+            )}
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -51,8 +77,8 @@ export default function SellersIndex({ sellers, filters }) {
             </div>
 
             {/* Filtros */}
-            <form onSubmit={handleSearch} className="flex gap-3 mb-5">
-                <div className="relative flex-1 max-w-sm">
+            <form onSubmit={handleSearch} className="flex gap-3 mb-5 flex-wrap">
+                <div className="relative flex-1 min-w-48">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
@@ -70,6 +96,15 @@ export default function SellersIndex({ sellers, filters }) {
                     <option value="">Todos os tipos</option>
                     <option value="commissioned">Comissionado</option>
                     <option value="reseller">Revendedor</option>
+                </select>
+                <select
+                    value={status}
+                    onChange={e => setStatus(e.target.value)}
+                    className="px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-white"
+                >
+                    <option value="">Todos os status</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
                 </select>
                 <button
                     type="submit"
@@ -95,12 +130,13 @@ export default function SellersIndex({ sellers, filters }) {
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Tipo</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Cidade / UF</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Telefone</th>
+                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
                                 <th className="px-5 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {sellers.data.map(seller => (
-                                <tr key={seller.id} className="hover:bg-gray-50 transition">
+                                <tr key={seller.id} className={`hover:bg-gray-50 transition ${!seller.is_active ? 'opacity-60' : ''}`}>
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
                                             {seller.photo ? (
@@ -135,6 +171,19 @@ export default function SellersIndex({ sellers, filters }) {
                                         {seller.phone}
                                     </td>
                                     <td className="px-5 py-3.5">
+                                        {seller.is_active ? (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                Ativo
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                                Inativo
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-3.5">
                                         <div className="flex items-center justify-end gap-1">
                                             <Link
                                                 href={route('sellers.show', seller.id)}
@@ -150,13 +199,31 @@ export default function SellersIndex({ sellers, filters }) {
                                             >
                                                 <Pencil size={16} strokeWidth={1.75} />
                                             </Link>
-                                            <button
-                                                onClick={() => setDeleting(seller)}
-                                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                                                title="Excluir"
-                                            >
-                                                <Trash2 size={16} strokeWidth={1.75} />
-                                            </button>
+
+                                            {seller.sales_count === 0 ? (
+                                                <button
+                                                    onClick={() => setDeleting(seller)}
+                                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                                    title="Excluir permanentemente"
+                                                >
+                                                    <Trash2 size={16} strokeWidth={1.75} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setToggling(seller)}
+                                                    className={`p-2 rounded-lg transition ${
+                                                        seller.is_active
+                                                            ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
+                                                            : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                    }`}
+                                                    title={seller.is_active ? 'Inativar' : 'Reativar'}
+                                                >
+                                                    {seller.is_active
+                                                        ? <PowerOff size={16} strokeWidth={1.75} />
+                                                        : <Power size={16} strokeWidth={1.75} />
+                                                    }
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -168,13 +235,28 @@ export default function SellersIndex({ sellers, filters }) {
 
             <Pagination links={sellers.links} />
 
+            {/* Modal: excluir */}
             <ConfirmModal
                 show={!!deleting}
-                title="Remover vendedor"
-                message={`Tem certeza que deseja remover "${deleting?.name}"? Esta ação não pode ser desfeita.`}
+                title="Excluir vendedor"
+                message={`Tem certeza que deseja excluir permanentemente "${deleting?.name}"? Esta ação não pode ser desfeita.`}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
                 loading={loadingDelete}
+            />
+
+            {/* Modal: inativar / reativar */}
+            <ConfirmModal
+                show={!!toggling}
+                title={toggling?.is_active ? 'Inativar vendedor' : 'Reativar vendedor'}
+                message={
+                    toggling?.is_active
+                        ? `Deseja inativar "${toggling?.name}"? Ele não poderá fazer login, mas seu histórico de vendas será preservado.`
+                        : `Deseja reativar "${toggling?.name}"? Ele voltará a ter acesso ao sistema.`
+                }
+                onConfirm={handleToggle}
+                onCancel={() => setToggling(null)}
+                loading={loadingToggle}
             />
         </AppLayout>
     );

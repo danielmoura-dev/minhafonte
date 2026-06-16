@@ -1,8 +1,9 @@
 import AppLayout from '@/Layouts/AppLayout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Pencil, DollarSign, TrendingUp, Clock, Wallet } from 'lucide-react';
+import { ArrowLeft, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
+import ConfirmModal from '@/Components/UI/ConfirmModal';
 
 function SummaryCard({ icon: Icon, label, value, color }) {
     return (
@@ -41,8 +42,20 @@ function EmptyState({ message }) {
 const TABS = ['Dados cadastrais', 'Histórico de vendas', 'Comissões', 'Pagamentos'];
 
 export default function SellerShow({ seller, summary, sales, commissions, payments }) {
-    const [activeTab, setActiveTab] = useState(0);
+    const [activeTab, setActiveTab]     = useState(0);
+    const [toggling, setToggling]       = useState(false);
+    const [loadingToggle, setLoadingToggle] = useState(false);
     const avatar = seller.name.charAt(0).toUpperCase();
+
+    function handleToggle() {
+        setLoadingToggle(true);
+        router.patch(route('sellers.toggle-status', seller.id), {}, {
+            onFinish: () => {
+                setLoadingToggle(false);
+                setToggling(false);
+            },
+        });
+    }
 
     return (
         <AppLayout title={seller.name}>
@@ -73,17 +86,45 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                             <div className="flex items-center gap-2 mt-0.5">
                                 <Badge value={seller.seller_type} />
                                 <Badge value={seller.person_type} />
+                                {seller.is_active ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        Ativo
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                        Inativo
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
-                <Link
-                    href={route('sellers.edit', seller.id)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-                >
-                    <Pencil size={15} strokeWidth={1.75} />
-                    Editar
-                </Link>
+                <div className="flex items-center gap-2">
+                    {seller.sales_count > 0 && (
+                        <button
+                            onClick={() => setToggling(true)}
+                            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition ${
+                                seller.is_active
+                                    ? 'border-orange-200 text-orange-600 hover:bg-orange-50'
+                                    : 'border-green-200 text-green-600 hover:bg-green-50'
+                            }`}
+                        >
+                            {seller.is_active
+                                ? <><PowerOff size={15} strokeWidth={1.75} /> Inativar</>
+                                : <><Power size={15} strokeWidth={1.75} /> Reativar</>
+                            }
+                        </button>
+                    )}
+                    <Link
+                        href={route('sellers.edit', seller.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                    >
+                        <Pencil size={15} strokeWidth={1.75} />
+                        Editar
+                    </Link>
+                </div>
             </div>
 
             {/* Resumo financeiro */}
@@ -256,6 +297,18 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                     )}
                 </div>
             </div>
+            <ConfirmModal
+                show={toggling}
+                title={seller.is_active ? 'Inativar vendedor' : 'Reativar vendedor'}
+                message={
+                    seller.is_active
+                        ? `Deseja inativar "${seller.name}"? Ele não poderá fazer login, mas seu histórico de vendas será preservado.`
+                        : `Deseja reativar "${seller.name}"? Ele voltará a ter acesso ao sistema.`
+                }
+                onConfirm={handleToggle}
+                onCancel={() => setToggling(false)}
+                loading={loadingToggle}
+            />
         </AppLayout>
     );
 }
