@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, PowerOff, Power } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
@@ -13,13 +13,17 @@ function formatCurrency(value) {
 }
 
 export default function ProductsIndex({ products, filters }) {
+    const { flash } = usePage().props;
     const [search, setSearch]               = useState(filters.search ?? '');
+    const [status, setStatus]               = useState(filters.status ?? '');
     const [deleting, setDeleting]           = useState(null);
+    const [toggling, setToggling]           = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
+    const [loadingToggle, setLoadingToggle] = useState(false);
 
     function handleSearch(e) {
         e.preventDefault();
-        router.get(route('products.index'), { search }, {
+        router.get(route('products.index'), { search, status }, {
             preserveState: true,
             replace:       true,
         });
@@ -35,8 +39,25 @@ export default function ProductsIndex({ products, filters }) {
         });
     }
 
+    function handleToggle() {
+        setLoadingToggle(true);
+        router.patch(route('products.toggle-status', toggling.id), {}, {
+            onFinish: () => {
+                setLoadingToggle(false);
+                setToggling(null);
+            },
+        });
+    }
+
     return (
         <AppLayout title="Produtos">
+
+            {/* Flash messages */}
+            {flash?.error && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                    {flash.error}
+                </div>
+            )}
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -67,6 +88,15 @@ export default function ProductsIndex({ products, filters }) {
                         className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
                     />
                 </div>
+                <select
+                    value={status}
+                    onChange={e => setStatus(e.target.value)}
+                    className="px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition bg-white"
+                >
+                    <option value="">Todos os status</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                </select>
                 <button
                     type="submit"
                     className="px-4 py-2.5 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition"
@@ -90,12 +120,13 @@ export default function ProductsIndex({ products, filters }) {
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Produto</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Código</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Valor padrão</th>
+                                <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
                                 <th className="px-5 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {products.data.map(product => (
-                                <tr key={product.id} className="hover:bg-gray-50 transition">
+                                <tr key={product.id} className={`hover:bg-gray-50 transition ${!product.active ? 'opacity-60' : ''}`}>
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
                                             {product.photo ? (
@@ -124,6 +155,19 @@ export default function ProductsIndex({ products, filters }) {
                                         {formatCurrency(product.default_price)}
                                     </td>
                                     <td className="px-5 py-3.5">
+                                        {product.active ? (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                Ativo
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                                Inativo
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-3.5">
                                         <div className="flex items-center justify-end gap-1">
                                             <Link
                                                 href={route('products.edit', product.id)}
@@ -132,13 +176,31 @@ export default function ProductsIndex({ products, filters }) {
                                             >
                                                 <Pencil size={16} strokeWidth={1.75} />
                                             </Link>
-                                            <button
-                                                onClick={() => setDeleting(product)}
-                                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                                                title="Excluir"
-                                            >
-                                                <Trash2 size={16} strokeWidth={1.75} />
-                                            </button>
+
+                                            {product.sales_count === 0 ? (
+                                                <button
+                                                    onClick={() => setDeleting(product)}
+                                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                                    title="Excluir permanentemente"
+                                                >
+                                                    <Trash2 size={16} strokeWidth={1.75} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setToggling(product)}
+                                                    className={`p-2 rounded-lg transition ${
+                                                        product.active
+                                                            ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
+                                                            : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                    }`}
+                                                    title={product.active ? 'Inativar' : 'Reativar'}
+                                                >
+                                                    {product.active
+                                                        ? <PowerOff size={16} strokeWidth={1.75} />
+                                                        : <Power size={16} strokeWidth={1.75} />
+                                                    }
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -150,13 +212,28 @@ export default function ProductsIndex({ products, filters }) {
 
             <Pagination links={products.links} />
 
+            {/* Modal: excluir */}
             <ConfirmModal
                 show={!!deleting}
-                title="Remover produto"
-                message={`Tem certeza que deseja remover "${deleting?.name}"? Esta ação não pode ser desfeita.`}
+                title="Excluir produto"
+                message={`Tem certeza que deseja excluir permanentemente "${deleting?.name}"? Esta ação não pode ser desfeita.`}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
                 loading={loadingDelete}
+            />
+
+            {/* Modal: inativar / reativar */}
+            <ConfirmModal
+                show={!!toggling}
+                title={toggling?.active ? 'Inativar produto' : 'Reativar produto'}
+                message={
+                    toggling?.active
+                        ? `Deseja inativar "${toggling?.name}"? Ele não aparecerá nas novas vendas, mas o histórico será preservado.`
+                        : `Deseja reativar "${toggling?.name}"? Ele voltará a aparecer nas novas vendas.`
+                }
+                onConfirm={handleToggle}
+                onCancel={() => setToggling(null)}
+                loading={loadingToggle}
             />
         </AppLayout>
     );

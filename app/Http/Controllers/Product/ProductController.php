@@ -20,9 +20,13 @@ class ProductController extends Controller
         $this->authorize('viewAny', Product::class);
 
         $products = Product::fromCompany(Auth::id())
+            ->withCount('sales')
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('code', 'like', "%{$s}%")
+            )
+            ->when($request->filled('status'), fn ($q) =>
+                $q->where('active', $request->status === 'active')
             )
             ->orderBy('name')
             ->paginate(15)
@@ -30,7 +34,7 @@ class ProductController extends Controller
 
         return Inertia::render('Products/Index', [
             'products' => $products,
-            'filters'  => $request->only('search'),
+            'filters'  => $request->only('search', 'status'),
         ]);
     }
 
@@ -93,6 +97,12 @@ class ProductController extends Controller
     {
         $this->authorize('delete', $product);
 
+        if ($product->sales()->exists()) {
+            return redirect()
+                ->route('products.index')
+                ->with('error', "O produto \"{$product->name}\" possui vendas registradas e não pode ser excluído. Use a opção de inativar.");
+        }
+
         if ($product->photo) {
             Storage::disk('public')->delete($product->photo);
         }
@@ -102,5 +112,16 @@ class ProductController extends Controller
         return redirect()
             ->route('products.index')
             ->with('success', 'Produto removido com sucesso!');
+    }
+
+    public function toggleStatus(Product $product): RedirectResponse
+    {
+        $this->authorize('update', $product);
+
+        $product->update(['active' => ! $product->active]);
+
+        $status = $product->active ? 'ativado' : 'inativado';
+
+        return back()->with('success', "Produto {$status} com sucesso!");
     }
 }
