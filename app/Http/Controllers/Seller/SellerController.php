@@ -91,9 +91,10 @@ class SellerController extends Controller
             ->where('commission_total', '>', 0)
             ->values();
 
-        $payments = $sales
-            ->where('payment_received', true)
-            ->values();
+        $payments = $sales->values();
+
+        $pendingPaymentsCount     = $sales->where('payment_received', false)->count();
+        $pendingCommissionsCount  = $commissions->where('commission_paid', false)->count();
 
         return Inertia::render('Sellers/Show', [
             'seller'  => $seller,
@@ -103,9 +104,11 @@ class SellerController extends Controller
                 'total_pending'    => $sales->where('payment_received', false)->sum('total'),
                 'total_commission' => $sales->sum('commission_total'),
             ],
-            'sales'       => $sales,
-            'commissions' => $commissions,
-            'payments'    => $payments,
+            'sales'                   => $sales,
+            'commissions'             => $commissions,
+            'payments'                => $payments,
+            'pendingPaymentsCount'    => $pendingPaymentsCount,
+            'pendingCommissionsCount' => $pendingCommissionsCount,
         ]);
     }
 

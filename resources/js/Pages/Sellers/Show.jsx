@@ -39,9 +39,7 @@ function EmptyState({ message }) {
     );
 }
 
-const TABS = ['Dados cadastrais', 'Histórico de vendas', 'Comissões', 'Pagamentos'];
-
-export default function SellerShow({ seller, summary, sales, commissions, payments }) {
+export default function SellerShow({ seller, summary, sales, commissions, payments, pendingPaymentsCount, pendingCommissionsCount }) {
     const [activeTab, setActiveTab]     = useState(0);
     const [toggling, setToggling]       = useState(false);
     const [loadingToggle, setLoadingToggle] = useState(false);
@@ -138,17 +136,27 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
             {/* Abas */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="flex border-b border-gray-100 overflow-x-auto">
-                    {TABS.map((tab, i) => (
+                    {[
+                        { label: 'Dados cadastrais',    badge: 0 },
+                        { label: 'Histórico de vendas', badge: 0 },
+                        { label: 'Comissões',           badge: pendingCommissionsCount },
+                        { label: 'Pagamentos',          badge: pendingPaymentsCount },
+                    ].map((tab, i) => (
                         <button
                             key={i}
                             onClick={() => setActiveTab(i)}
-                            className={`px-5 py-3.5 text-sm font-medium transition border-b-2 -mb-px whitespace-nowrap ${
+                            className={`relative px-5 py-3.5 text-sm font-medium transition border-b-2 -mb-px whitespace-nowrap flex items-center gap-2 ${
                                 activeTab === i
                                     ? 'border-primary-600 text-primary-700'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}
                         >
-                            {tab}
+                            {tab.label}
+                            {tab.badge > 0 && (
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                                    !
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -265,14 +273,15 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                     {/* Pagamentos */}
                     {activeTab === 3 && (
                         payments.length === 0 ? (
-                            <EmptyState message="Nenhum pagamento registrado ainda." />
+                            <EmptyState message="Nenhuma venda registrada ainda." />
                         ) : (
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-100">
-                                        <th className="text-left pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Data da venda</th>
+                                        <th className="text-left pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Data</th>
                                         <th className="text-left pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Produto</th>
-                                        <th className="text-right pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Valor recebido</th>
+                                        <th className="text-right pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Valor</th>
+                                        <th className="text-center pb-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -280,7 +289,15 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                         <tr key={sale.id} className="hover:bg-gray-50 transition">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
-                                            <td className="py-3 text-right font-semibold text-green-600">{formatCurrency(sale.total)}</td>
+                                            <td className={`py-3 text-right font-semibold ${sale.payment_received ? 'text-green-600' : 'text-amber-500'}`}>
+                                                {formatCurrency(sale.total)}
+                                            </td>
+                                            <td className="py-3 text-center">
+                                                {sale.payment_received
+                                                    ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Recebido</span>
+                                                    : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Pendente</span>
+                                                }
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -288,7 +305,10 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                     <tr className="border-t border-gray-200">
                                         <td colSpan={2} className="pt-3 text-sm font-semibold text-gray-700">Total recebido</td>
                                         <td className="pt-3 text-right font-bold text-green-600">
-                                            {formatCurrency(payments.reduce((acc, s) => acc + parseFloat(s.total ?? 0), 0))}
+                                            {formatCurrency(payments.filter(s => s.payment_received).reduce((acc, s) => acc + parseFloat(s.total ?? 0), 0))}
+                                        </td>
+                                        <td className="pt-3 text-center">
+                                            <span className="text-xs text-gray-400">{pendingPaymentsCount} pendente{pendingPaymentsCount !== 1 ? 's' : ''}</span>
                                         </td>
                                     </tr>
                                 </tfoot>
