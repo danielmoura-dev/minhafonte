@@ -15,12 +15,13 @@ function InputField({ label, error, children }) {
 
 export default function Register() {
     const { data, setData, post, processing, errors } = useForm({
-        company_name: '',
-        fantasy_name: '',
-        cnpj: '',
-        email: '',
-        password: '',
+        company_name:          '',
+        fantasy_name:          '',
+        cnpj:                  '',
+        email:                 '',
+        password:              '',
         password_confirmation: '',
+        consent:               false,
     });
 
     function formatCnpj(value) {
@@ -105,6 +106,31 @@ export default function Register() {
                         className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
                     />
                 </InputField>
+
+                <div>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={data.consent}
+                            onChange={e => setData('consent', e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 shrink-0"
+                        />
+                        <span className="text-sm text-gray-600 leading-snug">
+                            Li e aceito os{' '}
+                            <a href="/termos" target="_blank" className="text-primary-600 hover:underline font-medium">
+                                Termos de Uso
+                            </a>
+                            {' '}e a{' '}
+                            <a href="/privacidade" target="_blank" className="text-primary-600 hover:underline font-medium">
+                                Política de Privacidade
+                            </a>
+                            .
+                        </span>
+                    </label>
+                    {errors.consent && (
+                        <p className="text-red-500 text-xs mt-1">{errors.consent}</p>
+                    )}
+                </div>
 
                 <button
                     type="submit"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Seller\StoreSellerRequest;
 use App\Http\Requests\Seller\UpdateSellerRequest;
 use App\Models\Seller;
+use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,7 +57,14 @@ class SellerController extends Controller
             $data['photo'] = $request->file('photo')->store('sellers/photos', 'public');
         }
 
-        Seller::create($data);
+        $seller = Seller::create($data);
+
+        AuditService::log(
+            event:       'seller.created',
+            auditable:   $seller,
+            newValues:   ['name' => $seller->name, 'email' => $seller->email],
+            description: "Vendedor '{$seller->name}' cadastrado.",
+        );
 
         return redirect()
             ->route('sellers.index')
@@ -137,6 +145,12 @@ class SellerController extends Controller
 
         $seller->update($data);
 
+        AuditService::log(
+            event:       'seller.updated',
+            auditable:   $seller,
+            description: "Vendedor '{$seller->name}' atualizado.",
+        );
+
         return redirect()
             ->route('sellers.show', $seller)
             ->with('success', 'Vendedor atualizado com sucesso!');
@@ -149,6 +163,12 @@ class SellerController extends Controller
         if ($seller->photo) {
             Storage::disk('public')->delete($seller->photo);
         }
+
+        AuditService::log(
+            event:       'seller.deleted',
+            auditable:   $seller,
+            description: "Vendedor '{$seller->name}' removido.",
+        );
 
         $seller->delete();
 

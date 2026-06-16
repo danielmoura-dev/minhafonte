@@ -22,11 +22,9 @@ class RegisterCompanyRequest extends FormRequest
             'password'     => [
                 'required',
                 'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols(),
+                Password::min(8)->mixedCase()->numbers()->symbols(),
             ],
+            'consent' => ['accepted'],
         ];
     }
 
@@ -42,6 +40,7 @@ class RegisterCompanyRequest extends FormRequest
             'email.unique'          => 'Este e-mail já está cadastrado.',
             'password.required'     => 'A senha é obrigatória.',
             'password.confirmed'    => 'As senhas não conferem.',
+            'consent.accepted'      => 'Você precisa aceitar os termos para continuar.',
         ];
     }
 }

@@ -16,16 +16,26 @@ use Inertia\Inertia;
 
 Route::get('/', fn () => redirect()->route('login'));
 
+// Páginas legais (públicas)
+Route::get('/termos', fn () => Inertia::render('Legal/Terms'))->name('terms');
+Route::get('/privacidade', fn () => Inertia::render('Legal/Privacy'))->name('privacy');
+
 // Guest
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedCompanyController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedCompanyController::class, 'store'])->name('login.store');
+    Route::post('/login', [AuthenticatedCompanyController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('login.store');
 
     Route::get('/cadastro', [RegisteredCompanyController::class, 'create'])->name('register');
-    Route::post('/cadastro', [RegisteredCompanyController::class, 'store'])->name('register.store');
+    Route::post('/cadastro', [RegisteredCompanyController::class, 'store'])
+        ->middleware('throttle:register')
+        ->name('register.store');
 
     Route::get('/esqueci-senha', [PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('/esqueci-senha', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::post('/esqueci-senha', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('password.email');
 
     Route::get('/redefinir-senha/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/redefinir-senha', [NewPasswordController::class, 'store'])->name('password.update');
@@ -150,10 +160,14 @@ Route::prefix('vendedor')->name('seller.')->group(function () {
     // Guest do vendedor
     Route::middleware('guest.seller')->group(function () {
         Route::get('/login', [SellerAuthController::class, 'showLogin'])->name('login');
-        Route::post('/login', [SellerAuthController::class, 'login'])->name('login.store');
+        Route::post('/login', [SellerAuthController::class, 'login'])
+            ->middleware('throttle:seller-login')
+            ->name('login.store');
 
         Route::get('/primeiro-acesso', [SellerAuthController::class, 'showFirstAccess'])->name('first-access');
-        Route::post('/primeiro-acesso', [SellerAuthController::class, 'firstAccess'])->name('first-access.store');
+        Route::post('/primeiro-acesso', [SellerAuthController::class, 'firstAccess'])
+            ->middleware('throttle:3,1')
+            ->name('first-access.store');
     });
 
     // Autenticado como vendedor

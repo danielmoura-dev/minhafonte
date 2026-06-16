@@ -8,6 +8,7 @@ use App\Http\Requests\Sale\UpdateSaleRequest;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Seller;
+use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -98,7 +99,14 @@ class SaleController extends Controller
             $data['commission_paid_at'] = now();
         }
 
-        Sale::create($data);
+        $sale = Sale::create($data);
+
+        AuditService::log(
+            event:       'sale.created',
+            auditable:   $sale,
+            newValues:   ['seller_id' => $sale->seller_id, 'total' => $sale->total],
+            description: "Venda registrada. Total: R$ {$sale->total}",
+        );
 
         return redirect()
             ->route('sales.index')
@@ -152,6 +160,12 @@ class SaleController extends Controller
 
         $sale->update($data);
 
+        AuditService::log(
+            event:       'sale.updated',
+            auditable:   $sale,
+            description: "Venda #{$sale->id} atualizada.",
+        );
+
         return redirect()
             ->route('sales.index')
             ->with('success', 'Venda atualizada com sucesso!');
@@ -183,6 +197,12 @@ class SaleController extends Controller
     public function destroy(Sale $sale): RedirectResponse
     {
         $this->authorize('delete', $sale);
+
+        AuditService::log(
+            event:       'sale.deleted',
+            auditable:   $sale,
+            description: "Venda #{$sale->id} removida.",
+        );
 
         $sale->delete();
 
