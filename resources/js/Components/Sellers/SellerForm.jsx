@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { UserCircle, X } from 'lucide-react';
+import { compressImage } from '@/utils/compressImage';
 
 const BR_STATES = [
     'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -65,7 +67,24 @@ function formatCnpj(value) {
         .slice(0, 18);
 }
 
-export default function SellerForm({ data, setData, errors, processing, onSubmit, submitLabel }) {
+export default function SellerForm({ data, setData, errors, processing, onSubmit, submitLabel, existingPhoto }) {
+    const [photoPreview, setPhotoPreview] = useState(existingPhoto ? `/storage/${existingPhoto}` : null);
+    const fileInputRef = useRef(null);
+
+    async function handlePhotoChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const compressed = await compressImage(file);
+        setData('photo', compressed);
+        setPhotoPreview(URL.createObjectURL(compressed));
+    }
+
+    function handlePhotoRemove() {
+        setData('photo', null);
+        setPhotoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
     return (
         <form onSubmit={onSubmit} className="flex flex-col gap-6">
 
@@ -233,7 +252,7 @@ export default function SellerForm({ data, setData, errors, processing, onSubmit
                             type="number"
                             value={data.default_commission}
                             onChange={e => setData('default_commission', e.target.value)}
-                            placeholder="5"
+                            placeholder="Ex: 10"
                             min="0"
                             max="100"
                             step="0.01"
@@ -245,13 +264,37 @@ export default function SellerForm({ data, setData, errors, processing, onSubmit
             {/* Foto */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-700 mb-4">Foto (opcional)</h2>
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={e => setData('photo', e.target.files[0])}
-                    className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition"
-                />
-                {errors.photo && <p className="text-red-500 text-xs mt-1">{errors.photo}</p>}
+                <div className="flex items-start gap-5">
+                    <div className="relative shrink-0">
+                        <div className="w-20 h-20 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
+                            {photoPreview ? (
+                                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <UserCircle size={36} className="text-gray-300" strokeWidth={1.25} />
+                            )}
+                        </div>
+                        {photoPreview && (
+                            <button
+                                type="button"
+                                onClick={handlePhotoRemove}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition"
+                            >
+                                <X size={11} strokeWidth={2.5} />
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                            className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition"
+                        />
+                        <p className="text-xs text-gray-400">PNG, JPG ou WEBP. A imagem será comprimida automaticamente.</p>
+                        {errors.photo && <p className="text-red-500 text-xs">{errors.photo}</p>}
+                    </div>
+                </div>
             </div>
 
             {/* Ações */}

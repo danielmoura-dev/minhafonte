@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Package } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Package, X } from 'lucide-react';
+import { compressImage } from '@/utils/compressImage';
 
 function Field({ label, error, required, children }) {
     return (
@@ -43,6 +44,7 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
     const [photoPreview, setPhotoPreview] = useState(
         existingPhoto ? `/storage/${existingPhoto}` : null
     );
+    const fileInputRef = useRef(null);
 
     function handlePriceChange(e) {
         const formatted = formatPrice(e.target.value);
@@ -50,11 +52,18 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
         setData('default_price', parsePriceToDB(formatted));
     }
 
-    function handlePhotoChange(e) {
+    async function handlePhotoChange(e) {
         const file = e.target.files[0];
         if (!file) return;
-        setData('photo', file);
-        setPhotoPreview(URL.createObjectURL(file));
+        const compressed = await compressImage(file);
+        setData('photo', compressed);
+        setPhotoPreview(URL.createObjectURL(compressed));
+    }
+
+    function handlePhotoRemove() {
+        setData('photo', null);
+        setPhotoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     }
 
     function handleNoCode(checked) {
@@ -132,25 +141,33 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-sm font-semibold text-gray-700 mb-4">Foto do produto (opcional)</h2>
                 <div className="flex items-start gap-5">
-                    <div className="w-20 h-20 rounded-xl border border-gray-200 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center">
-                        {photoPreview ? (
-                            <img
-                                src={photoPreview}
-                                alt="Preview"
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <Package size={24} className="text-gray-300" strokeWidth={1.5} />
+                    <div className="relative shrink-0">
+                        <div className="w-20 h-20 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
+                            {photoPreview ? (
+                                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <Package size={24} className="text-gray-300" strokeWidth={1.5} />
+                            )}
+                        </div>
+                        {photoPreview && (
+                            <button
+                                type="button"
+                                onClick={handlePhotoRemove}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition"
+                            >
+                                <X size={11} strokeWidth={2.5} />
+                            </button>
                         )}
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <input
+                            ref={fileInputRef}
                             type="file"
                             accept="image/*"
                             onChange={handlePhotoChange}
                             className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition"
                         />
-                        <p className="text-xs text-gray-400">PNG, JPG ou WEBP. Máximo 2MB.</p>
+                        <p className="text-xs text-gray-400">PNG, JPG ou WEBP. A imagem será comprimida automaticamente.</p>
                         {errors.photo && <p className="text-red-500 text-xs">{errors.photo}</p>}
                     </div>
                 </div>

@@ -42,6 +42,7 @@ export default function SellerEdit({ seller }) {
                 processing={processing}
                 onSubmit={handleSubmit}
                 submitLabel="Salvar alterações"
+                existingPhoto={seller.photo}
             />
         </AppLayout>
     );
