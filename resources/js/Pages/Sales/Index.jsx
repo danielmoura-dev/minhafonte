@@ -1,6 +1,6 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle, XCircle, BadgeCheck, BadgeMinus } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
@@ -35,6 +35,21 @@ function ToggleStatus({ saleId, field, active, onRequest }) {
 }
 
 export default function SalesIndex({ sales, sellers, filters }) {
+    const highlightId = parseInt(new URLSearchParams(window.location.search).get('highlight')) || null;
+    const [activeHighlight, setActiveHighlight] = useState(highlightId);
+    const [fading, setFading]                   = useState(false);
+    const highlightRef                          = useRef(null);
+
+    useEffect(() => {
+        if (!highlightId) return;
+        if (highlightRef.current) {
+            highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        const fadeTimer  = setTimeout(() => setFading(true), 4000);
+        const clearTimer = setTimeout(() => { setActiveHighlight(null); setFading(false); }, 5200);
+        return () => { clearTimeout(fadeTimer); clearTimeout(clearTimer); };
+    }, []);
+
     const [form, setForm]                   = useState(filters);
     const [deleting, setDeleting]           = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
@@ -201,8 +216,21 @@ export default function SalesIndex({ sales, sellers, filters }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {sales.data.map(sale => (
-                                    <tr key={sale.id} className="hover:bg-gray-50 transition">
+                                {sales.data.map(sale => {
+                                    const isHighlighted = activeHighlight === sale.id;
+                                    return (
+                                    <tr
+                                        key={sale.id}
+                                        id={`sale-${sale.id}`}
+                                        ref={isHighlighted ? highlightRef : null}
+                                        className="hover:bg-gray-50 transition-all"
+                                        style={isHighlighted ? {
+                                            outline: fading ? '0px solid transparent' : '2px solid #0ea5e9',
+                                            outlineOffset: '-2px',
+                                            backgroundColor: fading ? 'transparent' : '#f0f9ff',
+                                            transition: fading ? 'all 1.2s ease-out' : 'all 0.3s ease-in',
+                                        } : {}}
+                                    >
                                         <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
                                             {formatDate(sale.sale_date)}
                                         </td>
@@ -264,7 +292,8 @@ export default function SalesIndex({ sales, sellers, filters }) {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

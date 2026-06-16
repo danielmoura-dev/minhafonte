@@ -1,6 +1,10 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+
+function goToSale(id) {
+    router.visit('/vendas?highlight=' + id);
+}
 import { ArrowLeft, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
@@ -206,7 +210,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {sales.map(sale => (
-                                        <tr key={sale.id} className="hover:bg-gray-50 transition">
+                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className="py-3 text-right text-gray-500">{sale.quantity}</td>
@@ -242,7 +246,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {commissions.map(sale => (
-                                        <tr key={sale.id} className="hover:bg-gray-50 transition">
+                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className="py-3 text-right text-gray-600">{formatCurrency(sale.total)}</td>
@@ -286,7 +290,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {payments.map(sale => (
-                                        <tr key={sale.id} className="hover:bg-gray-50 transition">
+                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className={`py-3 text-right font-semibold ${sale.payment_received ? 'text-green-600' : 'text-amber-500'}`}>
