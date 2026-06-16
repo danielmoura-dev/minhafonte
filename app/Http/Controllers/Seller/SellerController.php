@@ -91,7 +91,7 @@ class SellerController extends Controller
         ])->sortByDesc('total')->values()->take(8);
 
         $commissions = $sales->filter(fn ($s) => $s->commission_total > 0)->values();
-        $payments    = $sales->filter(fn ($s) => $s->payment_received)->values();
+        $payments    = $sales->values();
 
         return Inertia::render('Sellers/Show', [
             'seller'  => $seller,

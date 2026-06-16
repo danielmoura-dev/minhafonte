@@ -308,7 +308,7 @@ export default function SellerShow({
                     {activeTab === 3 && (
                         <div>
                             {payments.length === 0 ? (
-                                <p className="text-center py-10 text-gray-400 text-sm">Nenhum pagamento recebido ainda.</p>
+                                <p className="text-center py-10 text-gray-400 text-sm">Nenhuma venda registrada ainda.</p>
                             ) : (
                                 <table className="w-full text-sm">
                                     <thead>
@@ -316,7 +316,8 @@ export default function SellerShow({
                                             <th className="text-left py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Data da venda</th>
                                             <th className="text-left py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Produto</th>
                                             <th className="text-right py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Qtd</th>
-                                            <th className="text-right py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Valor recebido</th>
+                                            <th className="text-right py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Valor</th>
+                                            <th className="text-center py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
                                             <th className="text-left py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wider">Recebido em</th>
                                         </tr>
                                     </thead>
@@ -328,8 +329,17 @@ export default function SellerShow({
                                                 </td>
                                                 <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                                 <td className="py-3 text-right text-gray-600">{sale.quantity}</td>
-                                                <td className="py-3 text-right font-semibold text-green-700">
+                                                <td className={`py-3 text-right font-semibold ${sale.payment_received ? 'text-green-700' : 'text-gray-900'}`}>
                                                     {formatCurrency(sale.total)}
+                                                </td>
+                                                <td className="py-3 text-center">
+                                                    {sale.payment_received
+                                                        ? <span className="text-green-500 text-xs font-medium">Recebido</span>
+                                                        : <span className="inline-flex items-center gap-1 text-amber-500 text-xs font-medium">
+                                                            <TriangleAlert size={11} strokeWidth={2} />
+                                                            Pendente
+                                                          </span>
+                                                    }
                                                 </td>
                                                 <td className="py-3 text-gray-500 text-xs">
                                                     {sale.payment_received_at

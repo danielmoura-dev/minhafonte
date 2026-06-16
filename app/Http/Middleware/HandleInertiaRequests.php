@@ -19,8 +19,9 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user'           => $request->user(),
-                'emailVerified'  => $request->user()?->hasVerifiedEmail(),
+                'user'          => $request->user(),
+                'emailVerified' => $request->user()?->hasVerifiedEmail(),
+                'seller'        => auth('seller')->user(),
             ],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),

@@ -7,7 +7,9 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Sale\SaleController;
+use App\Http\Controllers\Seller\SellerAuthController;
 use App\Http\Controllers\Seller\SellerController;
+use App\Http\Controllers\Seller\SellerDashboardController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -138,4 +140,25 @@ Route::middleware('auth')->group(function () {
     ]);
 
     Route::patch('/vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
+});
+
+// -----------------------------------------------
+// Área do Vendedor
+// -----------------------------------------------
+Route::prefix('vendedor')->name('seller.')->group(function () {
+
+    // Guest do vendedor
+    Route::middleware('guest.seller')->group(function () {
+        Route::get('/login', [SellerAuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [SellerAuthController::class, 'login'])->name('login.store');
+
+        Route::get('/primeiro-acesso', [SellerAuthController::class, 'showFirstAccess'])->name('first-access');
+        Route::post('/primeiro-acesso', [SellerAuthController::class, 'firstAccess'])->name('first-access.store');
+    });
+
+    // Autenticado como vendedor
+    Route::middleware('auth.seller')->group(function () {
+        Route::post('/logout', [SellerAuthController::class, 'logout'])->name('logout');
+        Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
+    });
 });
