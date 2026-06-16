@@ -15,7 +15,7 @@ function formatCurrency(value) {
 
 function formatDate(value) {
     if (!value) return '—';
-    const [year, month, day] = value.split('-');
+    const [year, month, day] = String(value).substring(0, 10).split('-');
     return `${day}/${month}/${year}`;
 }
 

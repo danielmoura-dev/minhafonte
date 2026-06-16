@@ -101,6 +101,7 @@ Route::middleware('auth')->group(function () {
         'update'  => 'sales.update',
         'destroy' => 'sales.destroy',
     ]);
+    Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
 
     // Matéria Prima
     Route::get('/materia-prima', [RawMaterialController::class, 'index'])->name('raw-materials.index');
