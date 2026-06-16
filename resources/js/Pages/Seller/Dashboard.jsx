@@ -87,7 +87,7 @@ function InstallModal({ prompt, onClose }) {
                     Instalar aplicativo
                 </h2>
                 <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
-                    Instale o Minha Fonte na sua tela inicial para acessar rapidamente suas informações.
+                    Instale o Fonte Pro na sua tela inicial para acessar rapidamente suas informações.
                 </p>
                 <div className="flex flex-col gap-2">
                     <button

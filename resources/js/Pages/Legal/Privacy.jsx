@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { Droplets, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function Privacy() {
     return (
@@ -8,11 +8,8 @@ export default function Privacy() {
             <div className="min-h-screen bg-gray-50">
                 <div className="max-w-3xl mx-auto px-4 py-10">
 
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                            <Droplets size={15} className="text-white" strokeWidth={2} />
-                        </div>
-                        <span className="font-bold text-gray-900">Minha Fonte</span>
+                    <div className="mb-8">
+                        <img src="/images/logo.png" alt="Fonte Pro" className="h-10" />
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-200 p-8">
@@ -76,8 +73,8 @@ export default function Privacy() {
                                 <p className="leading-relaxed">
                                     Para exercer seus direitos ou esclarecer dúvidas sobre privacidade, entre em contato
                                     pelo e-mail{' '}
-                                    <a href="mailto:privacidade@minhafonte.com.br" className="text-primary-600 hover:underline">
-                                        privacidade@minhafonte.com.br
+                                    <a href="mailto:privacidade@fontepro.com.br" className="text-primary-600 hover:underline">
+                                        privacidade@fontepro.com.br
                                     </a>.
                                 </p>
                             </section>
@@ -85,10 +82,13 @@ export default function Privacy() {
                     </div>
 
                     <div className="mt-6 text-center">
-                        <a href="javascript:window.close()" className="text-sm text-gray-400 hover:text-gray-600 inline-flex items-center gap-1.5">
+                        <button
+                            onClick={() => { window.close(); setTimeout(() => { if (!window.closed) window.history.back(); }, 100); }}
+                            className="text-sm text-gray-400 hover:text-gray-600 inline-flex items-center gap-1.5 cursor-pointer"
+                        >
                             <ArrowLeft size={14} />
                             Fechar
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>

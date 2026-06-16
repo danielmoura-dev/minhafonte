@@ -1,25 +1,21 @@
 import { Head } from '@inertiajs/react';
-import { Droplets } from 'lucide-react';
 
 export default function AuthLayout({ title, subtitle, children }) {
     return (
         <>
             <Head title={title} />
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-950 via-primary-900 to-primary-700 px-4">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-400 via-primary-600 to-primary-900 px-4">
                 <div className="w-full max-w-md">
 
                     {/* Logo */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                <Droplets size={20} className="text-white" strokeWidth={2} />
-                            </div>
-                            <span className="text-2xl font-bold text-white tracking-tight">
-                                Minha Fonte
-                            </span>
-                        </div>
-                        <p className="mt-2 text-primary-300 text-sm">
-                            Gestão para distribuidoras de água
+                        <img
+                            src="/images/logo.png"
+                            alt="Fonte Pro"
+                            className="h-20 mx-auto drop-shadow-lg"
+                        />
+                        <p className="mt-3 text-white/80 text-sm font-medium">
+                            Gestão para indústrias de água
                         </p>
                     </div>
 
@@ -38,8 +34,8 @@ export default function AuthLayout({ title, subtitle, children }) {
                         {children}
                     </div>
 
-                    <p className="text-center text-primary-400 text-xs mt-6">
-                        © {new Date().getFullYear()} Minha Fonte. Todos os direitos reservados.
+                    <p className="text-center text-white/60 text-xs mt-6">
+                        © {new Date().getFullYear()} Fonte Pro. Todos os direitos reservados.
                     </p>
                 </div>
             </div>

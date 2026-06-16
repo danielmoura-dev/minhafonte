@@ -82,7 +82,7 @@ export default function Sidebar() {
                     <Droplets size={15} className="text-white" strokeWidth={2} />
                 </div>
                 <div className="min-w-0">
-                    <p className="font-bold text-gray-900 text-sm truncate">Minha Fonte</p>
+                    <p className="font-bold text-gray-900 text-sm truncate">Fonte Pro</p>
                     {company?.fantasy_name && (
                         <p className="text-xs text-gray-400 truncate">{company.fantasy_name}</p>
                     )}

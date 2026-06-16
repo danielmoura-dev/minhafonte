@@ -59,7 +59,7 @@ class SellerAuthController extends Controller
             'first_access_at'  => now(),
         ]);
 
-        auth('seller')->login($seller);
+        auth('seller')->login($seller, true);
 
         $request->session()->regenerate();
 

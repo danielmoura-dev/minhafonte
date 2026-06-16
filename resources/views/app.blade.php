@@ -6,7 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="theme-color" content="#2563eb">
 
-        <title inertia>{{ config('app.name', 'Minha Fonte') }}</title>
+        <title inertia>{{ config('app.name', 'Fonte Pro') }}</title>
 
         <link rel="manifest" href="/manifest.json">
         <link rel="preconnect" href="https://fonts.googleapis.com">

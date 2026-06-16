@@ -1,6 +1,7 @@
 import AuthLayout from '@/Layouts/AuthLayout';
 import { useForm, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import PasswordInput from '@/Components/PasswordInput';
 
 export default function SellerFirstAccess() {
     const [step, setStep] = useState(1);
@@ -43,12 +44,11 @@ export default function SellerFirstAccess() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Criar senha
                     </label>
-                    <input
-                        type="password"
+                    <PasswordInput
                         value={data.password}
                         onChange={e => setData('password', e.target.value)}
                         placeholder="Mín. 8 caracteres"
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+                        autoComplete="new-password"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                         Mínimo 8 caracteres, maiúsculas, minúsculas, número e símbolo.
@@ -62,12 +62,11 @@ export default function SellerFirstAccess() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Confirmar senha
                     </label>
-                    <input
-                        type="password"
+                    <PasswordInput
                         value={data.password_confirmation}
                         onChange={e => setData('password_confirmation', e.target.value)}
                         placeholder="Repita a senha"
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+                        autoComplete="new-password"
                     />
                 </div>
 

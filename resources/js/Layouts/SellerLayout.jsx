@@ -46,7 +46,7 @@ export default function SellerLayout({ title, children }) {
                             <Droplets size={13} className="text-white" strokeWidth={2} />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-gray-900 leading-none">Minha Fonte</p>
+                            <p className="text-sm font-bold text-gray-900 leading-none">Fonte Pro</p>
                             {seller?.company?.fantasy_name && (
                                 <p className="text-xs text-gray-400 leading-none mt-0.5">
                                     {seller.company.fantasy_name}

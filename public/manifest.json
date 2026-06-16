@@ -1,7 +1,7 @@
 {
-    "name": "Minha Fonte",
-    "short_name": "MF",
-    "description": "Área do vendedor — Minha Fonte",
+    "name": "Fonte Pro",
+    "short_name": "FP",
+    "description": "Área do vendedor — Fonte Pro",
     "start_url": "/vendedor/dashboard",
     "display": "standalone",
     "background_color": "#ffffff",

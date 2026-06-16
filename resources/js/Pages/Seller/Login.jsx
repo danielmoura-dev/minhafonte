@@ -1,10 +1,12 @@
 import AuthLayout from '@/Layouts/AuthLayout';
 import { useForm, Link } from '@inertiajs/react';
+import PasswordInput from '@/Components/PasswordInput';
 
 export default function SellerLogin() {
     const { data, setData, post, processing, errors } = useForm({
         email:    '',
         password: '',
+        remember: true,
     });
 
     function handleSubmit(e) {
@@ -37,12 +39,10 @@ export default function SellerLogin() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Senha
                     </label>
-                    <input
-                        type="password"
+                    <PasswordInput
                         value={data.password}
                         onChange={e => setData('password', e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
                         autoComplete="current-password"
                     />
                     {errors.password && (

@@ -27,7 +27,7 @@ class CompanyEmailVerificationNotification extends VerifyEmail
         $url = $this->verificationUrl($notifiable);
 
         return (new MailMessage)
-            ->subject('Confirme seu e-mail — Minha Fonte')
+            ->subject('Confirme seu e-mail — Fonte Pro')
             ->greeting('Olá, ' . $notifiable->fantasy_name . '!')
             ->line('Clique no botão abaixo para confirmar seu endereço de e-mail.')
             ->action('Confirmar e-mail', $url)

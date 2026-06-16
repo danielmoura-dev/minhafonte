@@ -1,4 +1,4 @@
-const CACHE_NAME = 'minhafonte-v1';
+const CACHE_NAME = 'fontepro-v1';
 const STATIC_ASSETS = [
     '/vendedor/dashboard',
 ];
@@ -44,7 +44,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
     const data = event.data?.json() ?? {};
     event.waitUntil(
-        self.registration.showNotification(data.title ?? 'Minha Fonte', {
+        self.registration.showNotification(data.title ?? 'Fonte Pro', {
             body: data.body ?? '',
             icon: '/icons/icon-192.png',
         })

@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Droplets, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function Terms() {
     return (
@@ -8,11 +8,8 @@ export default function Terms() {
             <div className="min-h-screen bg-gray-50">
                 <div className="max-w-3xl mx-auto px-4 py-10">
 
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                            <Droplets size={15} className="text-white" strokeWidth={2} />
-                        </div>
-                        <span className="font-bold text-gray-900">Minha Fonte</span>
+                    <div className="mb-8">
+                        <img src="/images/logo.png" alt="Fonte Pro" className="h-10" />
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-200 p-8">
@@ -24,7 +21,7 @@ export default function Terms() {
                             <section>
                                 <h2 className="text-base font-semibold text-gray-900 mb-2">1. Aceitação dos termos</h2>
                                 <p className="leading-relaxed">
-                                    Ao criar uma conta no Minha Fonte, você declara que leu, compreendeu e concorda com estes Termos de Uso.
+                                    Ao criar uma conta no Fonte Pro, você declara que leu, compreendeu e concorda com estes Termos de Uso.
                                     Caso não concorde, não utilize o sistema.
                                 </p>
                             </section>
@@ -32,7 +29,7 @@ export default function Terms() {
                             <section>
                                 <h2 className="text-base font-semibold text-gray-900 mb-2">2. Descrição do serviço</h2>
                                 <p className="leading-relaxed">
-                                    O Minha Fonte é uma plataforma SaaS de gestão para distribuidoras de água,
+                                    O Fonte Pro é uma plataforma SaaS de gestão para distribuidoras de água,
                                     oferecendo funcionalidades de controle de vendas, vendedores, produtos e comissões.
                                 </p>
                             </section>
@@ -48,7 +45,7 @@ export default function Terms() {
                             <section>
                                 <h2 className="text-base font-semibold text-gray-900 mb-2">4. Propriedade intelectual</h2>
                                 <p className="leading-relaxed">
-                                    Todo o conteúdo, marca, código e design do Minha Fonte são propriedade exclusiva dos seus desenvolvedores.
+                                    Todo o conteúdo, marca, código e design do Fonte Pro são propriedade exclusiva dos seus desenvolvedores.
                                     É vedada a reprodução sem autorização expressa.
                                 </p>
                             </section>
@@ -56,7 +53,7 @@ export default function Terms() {
                             <section>
                                 <h2 className="text-base font-semibold text-gray-900 mb-2">5. Limitação de responsabilidade</h2>
                                 <p className="leading-relaxed">
-                                    O Minha Fonte não se responsabiliza por perdas decorrentes de uso indevido,
+                                    O Fonte Pro não se responsabiliza por perdas decorrentes de uso indevido,
                                     falhas de conexão ou dados inseridos incorretamente pelos usuários.
                                 </p>
                             </section>
@@ -73,8 +70,8 @@ export default function Terms() {
                                 <h2 className="text-base font-semibold text-gray-900 mb-2">7. Contato</h2>
                                 <p className="leading-relaxed">
                                     Dúvidas sobre estes termos podem ser enviadas para{' '}
-                                    <a href="mailto:contato@minhafonte.com.br" className="text-primary-600 hover:underline">
-                                        contato@minhafonte.com.br
+                                    <a href="mailto:contato@fontepro.com.br" className="text-primary-600 hover:underline">
+                                        contato@fontepro.com.br
                                     </a>.
                                 </p>
                             </section>
@@ -82,10 +79,13 @@ export default function Terms() {
                     </div>
 
                     <div className="mt-6 text-center">
-                        <a href="javascript:window.close()" className="text-sm text-gray-400 hover:text-gray-600 inline-flex items-center gap-1.5">
+                        <button
+                            onClick={() => { window.close(); setTimeout(() => { if (!window.closed) window.history.back(); }, 100); }}
+                            className="text-sm text-gray-400 hover:text-gray-600 inline-flex items-center gap-1.5 cursor-pointer"
+                        >
                             <ArrowLeft size={14} />
                             Fechar
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
