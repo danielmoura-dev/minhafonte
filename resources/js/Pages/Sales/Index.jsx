@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ShoppingCart, CheckCircle, XCircle, BadgeCheck, BadgeMinus } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 import Badge from '@/Components/UI/Badge';
@@ -19,14 +19,12 @@ function formatDate(value) {
     return `${day}/${month}/${year}`;
 }
 
-function ToggleStatus({ saleId, field, active, loading, onToggle }) {
-    const isLoading = loading === `${saleId}-${field}`;
+function ToggleStatus({ saleId, field, active, onRequest }) {
     return (
         <button
-            onClick={() => onToggle(saleId, field)}
-            disabled={isLoading}
+            onClick={() => onRequest(saleId, field, active)}
             title={active ? 'Clique para desmarcar' : 'Clique para marcar'}
-            className="p-1 rounded transition hover:scale-110 disabled:opacity-50"
+            className="p-1 rounded transition hover:scale-110"
         >
             {active
                 ? <CheckCircle size={18} className="text-green-500" strokeWidth={2} />
@@ -37,16 +35,24 @@ function ToggleStatus({ saleId, field, active, loading, onToggle }) {
 }
 
 export default function SalesIndex({ sales, sellers, filters }) {
-    const [form, setForm] = useState(filters);
-    const [deleting, setDeleting] = useState(null);
+    const [form, setForm]                   = useState(filters);
+    const [deleting, setDeleting]           = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
-    const [loadingToggle, setLoadingToggle] = useState(null);
+    const [pendingToggle, setPendingToggle] = useState(null); // { saleId, field, active }
+    const [loadingToggle, setLoadingToggle] = useState(false);
 
-    function handleToggle(saleId, field) {
-        setLoadingToggle(`${saleId}-${field}`);
-        router.patch(route('sales.toggle', saleId), { field }, {
+    function requestToggle(saleId, field, active) {
+        setPendingToggle({ saleId, field, active });
+    }
+
+    function confirmToggle() {
+        setLoadingToggle(true);
+        router.patch(route('sales.toggle', pendingToggle.saleId), { field: pendingToggle.field }, {
             preserveScroll: true,
-            onFinish: () => setLoadingToggle(null),
+            onFinish: () => {
+                setLoadingToggle(false);
+                setPendingToggle(null);
+            },
         });
     }
 
@@ -225,8 +231,7 @@ export default function SalesIndex({ sales, sellers, filters }) {
                                                     saleId={sale.id}
                                                     field="payment_received"
                                                     active={sale.payment_received}
-                                                    loading={loadingToggle}
-                                                    onToggle={handleToggle}
+                                                    onRequest={requestToggle}
                                                 />
                                             </div>
                                         </td>
@@ -236,8 +241,7 @@ export default function SalesIndex({ sales, sellers, filters }) {
                                                     saleId={sale.id}
                                                     field="commission_paid"
                                                     active={sale.commission_paid}
-                                                    loading={loadingToggle}
-                                                    onToggle={handleToggle}
+                                                    onRequest={requestToggle}
                                                 />
                                             </div>
                                         </td>
@@ -276,6 +280,34 @@ export default function SalesIndex({ sales, sellers, filters }) {
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
                 loading={loadingDelete}
+                variant="danger"
+                confirmLabel="Remover"
+                loadingLabel="Removendo..."
+            />
+
+            <ConfirmModal
+                show={!!pendingToggle}
+                icon={pendingToggle?.active ? BadgeMinus : BadgeCheck}
+                variant={pendingToggle?.active ? 'warning' : 'success'}
+                title={
+                    pendingToggle?.field === 'payment_received'
+                        ? (pendingToggle?.active ? 'Desmarcar pagamento' : 'Confirmar pagamento')
+                        : (pendingToggle?.active ? 'Desmarcar comissão' : 'Confirmar comissão')
+                }
+                message={
+                    pendingToggle?.field === 'payment_received'
+                        ? (pendingToggle?.active
+                            ? 'Deseja desmarcar o recebimento? O pagamento voltará como pendente.'
+                            : 'Deseja confirmar o recebimento deste pagamento?')
+                        : (pendingToggle?.active
+                            ? 'Deseja desmarcar a comissão? Ela voltará como pendente.'
+                            : 'Deseja confirmar que esta comissão foi paga?')
+                }
+                confirmLabel={pendingToggle?.active ? 'Desmarcar' : 'Confirmar'}
+                loadingLabel="Salvando..."
+                onConfirm={confirmToggle}
+                onCancel={() => setPendingToggle(null)}
+                loading={loadingToggle}
             />
         </AppLayout>
     );
