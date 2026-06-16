@@ -1,7 +1,7 @@
 import { Head, usePage, Link } from '@inertiajs/react';
 import Sidebar from '@/Components/Sidebar';
 import { useEffect, useState } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, MonitorSmartphone } from 'lucide-react';
 
 function FlashMessage() {
     const { flash } = usePage().props;
@@ -27,6 +27,37 @@ function FlashMessage() {
             current.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
         }`}>
             {current.message}
+        </div>
+    );
+}
+
+function MobileBlocker() {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+
+    useEffect(() => {
+        function check() { setIsMobile(window.innerWidth < 1024); }
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
+    if (!isMobile) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-br from-primary-400 via-primary-600 to-primary-900 px-8 text-center">
+            <img
+                src="/images/logo2.png"
+                alt="Fonte Pro"
+                className="h-16 mb-8 drop-shadow-lg"
+            />
+            <div className="w-16 h-16 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm">
+                <MonitorSmartphone size={32} className="text-white" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-3">
+                Disponível apenas no computador
+            </h2>
+            <p className="text-white/75 text-sm leading-relaxed max-w-xs">
+                Estamos trabalhando para trazer o sistema de gestão para smartphones. Por enquanto, acesse pelo computador ou notebook.
+            </p>
         </div>
     );
 }
@@ -70,6 +101,7 @@ export default function AppLayout({ title, children, requireVerified = true }) {
     return (
         <>
             <Head title={title} />
+            <MobileBlocker />
             <div className="flex min-h-screen bg-gray-50">
 
                 {/* Sidebar sempre clicável, acima do overlay */}

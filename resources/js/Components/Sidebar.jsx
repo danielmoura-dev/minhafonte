@@ -2,13 +2,10 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
     Users,
-    UserPlus,
-    Settings,
     Package,
     ShoppingCart,
     FlaskConical,
     ChevronDown,
-    Droplets,
     LogOut,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -17,10 +14,11 @@ function NavItem({ href, icon: Icon, label, active }) {
     return (
         <Link
             href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                active
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
         >
             <Icon size={17} strokeWidth={1.75} />
             <span>{label}</span>
@@ -28,13 +26,11 @@ function NavItem({ href, icon: Icon, label, active }) {
     );
 }
 
-function NavGroup({ icon: Icon, label, children, defaultOpen = false }) {
-    const [open, setOpen] = useState(defaultOpen);
-
+function NavGroup({ icon: Icon, label, open, onToggle, children }) {
     return (
         <div>
             <button
-                onClick={() => setOpen(!open)}
+                onClick={onToggle}
                 className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
             >
                 <div className="flex items-center gap-3">
@@ -43,14 +39,17 @@ function NavGroup({ icon: Icon, label, children, defaultOpen = false }) {
                 </div>
                 <ChevronDown
                     size={14}
-                    className={`transition-transform text-gray-400 ${open ? 'rotate-180' : ''}`}
+                    className={`transition-transform duration-200 text-gray-400 ${open ? 'rotate-180' : ''}`}
                 />
             </button>
-            {open && (
-                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 pl-3">
+            <div
+                className="overflow-hidden transition-all duration-200 ease-in-out"
+                style={{ maxHeight: open ? '200px' : '0px', opacity: open ? 1 : 0 }}
+            >
+                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-gray-200 pl-3 pb-0.5">
                     {children}
                 </div>
-            )}
+            </div>
         </div>
     );
 }
@@ -59,34 +58,47 @@ function SubNavItem({ href, label, active }) {
     return (
         <Link
             href={href}
-            className={`block px-2 py-2 rounded-md text-sm transition-colors ${active
-                ? 'text-primary-700 font-medium'
-                : 'text-gray-500 hover:text-gray-900'
-                }`}
+            className={`block px-2 py-2 rounded-md text-sm transition-colors ${
+                active
+                    ? 'text-primary-700 font-medium'
+                    : 'text-gray-500 hover:text-gray-900'
+            }`}
         >
             {label}
         </Link>
     );
 }
 
+function resolveOpenGroup(url) {
+    if (url.startsWith('/vendedores')) return 'sellers';
+    if (url.startsWith('/produtos'))   return 'products';
+    if (url.startsWith('/vendas'))     return 'sales';
+    return null;
+}
+
 export default function Sidebar() {
     const { url, props } = usePage();
     const company = props.auth?.user;
+
+    const [openGroup, setOpenGroup] = useState(() => resolveOpenGroup(url));
+
+    function toggle(name) {
+        setOpenGroup(prev => (prev === name ? null : name));
+    }
 
     return (
         <aside className="w-60 min-h-screen bg-white border-r border-gray-200 flex flex-col shrink-0">
 
             {/* Logo */}
-            <div className="h-16 flex items-center gap-2.5 px-5 border-b border-gray-200">
-                <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shrink-0">
-                    <Droplets size={15} className="text-white" strokeWidth={2} />
-                </div>
-                <div className="min-w-0">
-                    <p className="font-bold text-gray-900 text-sm truncate">Fonte Pro</p>
-                    {company?.fantasy_name && (
-                        <p className="text-xs text-gray-400 truncate">{company.fantasy_name}</p>
-                    )}
-                </div>
+            <div className="h-20 flex items-center px-5 border-b border-gray-200">
+                <img
+                    src="/images/logo2.png"
+                    alt="Fonte Pro"
+                    className="h-14 w-auto object-contain"
+                />
+                {company?.fantasy_name && (
+                    <p className="ml-3 text-xs text-gray-400 truncate">{company.fantasy_name}</p>
+                )}
             </div>
 
             {/* Nav */}
@@ -107,7 +119,8 @@ export default function Sidebar() {
                     <NavGroup
                         icon={Users}
                         label="Vendedores"
-                        defaultOpen={url.startsWith('/vendedores')}
+                        open={openGroup === 'sellers'}
+                        onToggle={() => toggle('sellers')}
                     >
                         <SubNavItem
                             href={route('sellers.create')}
@@ -124,7 +137,8 @@ export default function Sidebar() {
                     <NavGroup
                         icon={Package}
                         label="Produtos"
-                        defaultOpen={url.startsWith('/produtos')}
+                        open={openGroup === 'products'}
+                        onToggle={() => toggle('products')}
                     >
                         <SubNavItem
                             href={route('products.create')}
@@ -141,7 +155,8 @@ export default function Sidebar() {
                     <NavGroup
                         icon={ShoppingCart}
                         label="Vendas"
-                        defaultOpen={url.startsWith('/vendas')}
+                        open={openGroup === 'sales'}
+                        onToggle={() => toggle('sales')}
                     >
                         <SubNavItem
                             href={route('sales.create')}
@@ -154,7 +169,6 @@ export default function Sidebar() {
                             active={url === '/vendas'}
                         />
                     </NavGroup>
-
                 </div>
 
                 <div className="mt-3">
