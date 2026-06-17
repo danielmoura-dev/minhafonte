@@ -1,11 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-
-function goToSale(id) {
-    router.visit('/vendas?highlight=' + id);
-}
-import { ArrowLeft, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertTriangle, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power, FileText, X, Download } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
@@ -44,10 +40,47 @@ function EmptyState({ message }) {
 }
 
 export default function SellerShow({ seller, summary, sales, commissions, payments, pendingPaymentsCount, pendingCommissionsCount }) {
-    const [activeTab, setActiveTab]     = useState(0);
-    const [toggling, setToggling]       = useState(false);
-    const [loadingToggle, setLoadingToggle] = useState(false);
-    const avatar = seller.name.charAt(0).toUpperCase();
+    const [activeTab, setActiveTab]           = useState(0);
+    const [toggling, setToggling]             = useState(false);
+    const [loadingToggle, setLoadingToggle]   = useState(false);
+    const [pendingSaleNav, setPendingSaleNav] = useState(null);
+    const [showReport, setShowReport] = useState(false);
+
+    const DEFAULT_SECTIONS = ['sales_history', 'commissions_paid', 'commissions_pending', 'payments_paid', 'payments_pending', 'total_sold', 'total_received', 'total_pending', 'commission_paid', 'commission_pending'];
+
+    const [reportForm, setReportForm] = useState(() => {
+        try {
+            const saved = localStorage.getItem('seller_report_form');
+            if (saved) return JSON.parse(saved);
+        } catch (_) {}
+        return { date_from: '', date_to: '', sections: DEFAULT_SECTIONS };
+    });
+
+    function updateReportForm(updater) {
+        setReportForm(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            try { localStorage.setItem('seller_report_form', JSON.stringify(next)); } catch (_) {}
+            return next;
+        });
+    }
+
+    function toggleSection(key) {
+        updateReportForm(prev => ({
+            ...prev,
+            sections: prev.sections.includes(key)
+                ? prev.sections.filter(s => s !== key)
+                : [...prev.sections, key],
+        }));
+    }
+
+    function downloadReport() {
+        const params = new URLSearchParams();
+        if (reportForm.date_from) params.set('date_from', reportForm.date_from);
+        if (reportForm.date_to)   params.set('date_to',   reportForm.date_to);
+        reportForm.sections.forEach(s => params.append('sections[]', s));
+        window.open(route('sellers.report', seller.id) + '?' + params.toString(), '_blank');
+        setShowReport(false);
+    }
 
     function handleToggle() {
         setLoadingToggle(true);
@@ -104,6 +137,13 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowReport(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary-200 text-sm font-medium text-primary-700 hover:bg-primary-50 transition"
+                    >
+                        <FileText size={15} strokeWidth={1.75} />
+                        Relatório
+                    </button>
                     {seller.sales_count > 0 && (
                         <button
                             onClick={() => setToggling(true)}
@@ -157,9 +197,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                         >
                             {tab.label}
                             {tab.badge > 0 && (
-                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
-                                    !
-                                </span>
+                                <AlertTriangle size={13} className="text-amber-500 shrink-0" strokeWidth={2.5} />
                             )}
                         </button>
                     ))}
@@ -210,7 +248,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {sales.map(sale => (
-                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
+                                        <tr key={sale.id} onClick={() => setPendingSaleNav(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className="py-3 text-right text-gray-500">{sale.quantity}</td>
@@ -246,7 +284,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {commissions.map(sale => (
-                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
+                                        <tr key={sale.id} onClick={() => setPendingSaleNav(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className="py-3 text-right text-gray-600">{formatCurrency(sale.total)}</td>
@@ -290,7 +328,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {payments.map(sale => (
-                                        <tr key={sale.id} onClick={() => goToSale(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
+                                        <tr key={sale.id} onClick={() => setPendingSaleNav(sale.id)} className="hover:bg-primary-50 transition cursor-pointer">
                                             <td className="py-3 text-gray-500">{formatDate(sale.sale_date)}</td>
                                             <td className="py-3 text-gray-700">{sale.product?.name}</td>
                                             <td className={`py-3 text-right font-semibold ${sale.payment_received ? 'text-green-600' : 'text-amber-500'}`}>
@@ -333,6 +371,127 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                 onCancel={() => setToggling(false)}
                 loading={loadingToggle}
             />
+
+            <ConfirmModal
+                show={pendingSaleNav !== null}
+                icon={ArrowRight}
+                variant="primary"
+                title="Ir para esta venda"
+                message="Deseja abrir o registro completo desta venda?"
+                confirmLabel="Ir para a venda"
+                onConfirm={() => router.visit('/vendas?highlight=' + pendingSaleNav)}
+                onCancel={() => setPendingSaleNav(null)}
+            />
+
+            {/* ── Modal de Relatório ── */}
+            {showReport && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        {/* Header do modal */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center">
+                                    <FileText size={16} className="text-primary-600" strokeWidth={1.75} />
+                                </div>
+                                <h3 className="text-sm font-semibold text-gray-900">Gerar Relatório — {seller.name}</h3>
+                            </div>
+                            <button onClick={() => setShowReport(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="px-6 py-5 space-y-5">
+                            {/* Período */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Período</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs text-gray-500 mb-1 block">De</label>
+                                        <input
+                                            type="date"
+                                            value={reportForm.date_from}
+                                            onChange={e => updateReportForm(p => ({ ...p, date_from: e.target.value }))}
+                                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500 mb-1 block">Até</label>
+                                        <input
+                                            type="date"
+                                            value={reportForm.date_to}
+                                            onChange={e => updateReportForm(p => ({ ...p, date_to: e.target.value }))}
+                                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Seções */}
+                            <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Incluir no relatório</p>
+                                <div className="space-y-1">
+                                    {[
+                                        { key: 'sales_history',       label: 'Histórico de vendas' },
+                                        { key: 'commissions_paid',    label: 'Comissões pagas' },
+                                        { key: 'commissions_pending', label: 'Comissões pendentes' },
+                                        { key: 'payments_paid',       label: 'Pagamentos recebidos' },
+                                        { key: 'payments_pending',    label: 'Pagamentos pendentes' },
+                                    ].map(({ key, label }) => (
+                                        <label key={key} className="flex items-center gap-2.5 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={reportForm.sections.includes(key)}
+                                                onChange={() => toggleSection(key)}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition">{label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+
+                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                                    <p className="text-xs text-gray-400 mb-1.5">Totais</p>
+                                    {[
+                                        { key: 'total_sold',          label: 'Total vendido' },
+                                        { key: 'total_received',      label: 'Total recebido pela empresa' },
+                                        { key: 'total_pending',       label: 'Total pendente' },
+                                        { key: 'commission_paid',     label: 'Comissão já paga' },
+                                        { key: 'commission_pending',  label: 'Comissão pendente' },
+                                    ].map(({ key, label }) => (
+                                        <label key={key} className="flex items-center gap-2.5 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={reportForm.sections.includes(key)}
+                                                onChange={() => toggleSection(key)}
+                                                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <span className="text-sm text-gray-700 group-hover:text-gray-900 transition">{label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowReport(false)}
+                                className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={downloadReport}
+                                disabled={reportForm.sections.length === 0}
+                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition disabled:opacity-50"
+                            >
+                                <Download size={15} strokeWidth={2} />
+                                Baixar PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

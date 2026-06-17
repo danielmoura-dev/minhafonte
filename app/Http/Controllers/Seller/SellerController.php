@@ -7,6 +7,7 @@ use App\Http\Requests\Seller\StoreSellerRequest;
 use App\Http\Requests\Seller\UpdateSellerRequest;
 use App\Models\Seller;
 use App\Services\AuditService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,13 @@ class SellerController extends Controller
         $this->authorize('viewAny', Seller::class);
 
         $sellers = Seller::fromCompany(Auth::id())
-            ->withCount('sales')
+            ->withCount([
+                'sales',
+                'sales as pending_payments_count'     => fn ($q) => $q->where('payment_received', false),
+                'sales as pending_commissions_count'  => fn ($q) => $q->where('commission_paid', false)
+                                                                       ->whereNotNull('commission_total')
+                                                                       ->where('commission_total', '>', 0),
+            ])
             ->when($request->search, fn ($q, $s) =>
                 $q->where('name', 'like', "%{$s}%")
                   ->orWhere('email', 'like', "%{$s}%")
@@ -190,5 +197,48 @@ class SellerController extends Controller
         );
 
         return back()->with('success', "Vendedor {$status} com sucesso!");
+    }
+
+    public function report(Request $request, Seller $seller)
+    {
+        $this->authorize('view', $seller);
+
+        $dateFrom = $request->date_from;
+        $dateTo   = $request->date_to;
+        $sections = $request->sections ?? [];
+
+        $query = \App\Models\Sale::where('seller_id', $seller->id)->with('product');
+
+        if ($dateFrom) $query->where('sale_date', '>=', $dateFrom);
+        if ($dateTo)   $query->where('sale_date', '<=', $dateTo);
+
+        $sales = $query->orderBy('sale_date')->get();
+
+        $paidCommissions    = $sales->where('commission_paid', true)->where('commission_total', '>', 0)->values();
+        $pendingCommissions = $sales->where('commission_paid', false)->whereNotNull('commission_total')->where('commission_total', '>', 0)->values();
+        $paidPayments       = $sales->where('payment_received', true)->values();
+        $pendingPayments    = $sales->where('payment_received', false)->values();
+
+        $pdf = Pdf::loadView('pdf.seller-report', [
+            'seller'                 => $seller,
+            'company'                => Auth::user(),
+            'dateFrom'               => $dateFrom,
+            'dateTo'                 => $dateTo,
+            'sections'               => $sections,
+            'sales'                  => $sales,
+            'paidCommissions'        => $paidCommissions,
+            'pendingCommissions'     => $pendingCommissions,
+            'paidPayments'           => $paidPayments,
+            'pendingPayments'        => $pendingPayments,
+            'totalSold'              => $sales->sum('total'),
+            'totalReceived'          => $sales->where('payment_received', true)->sum('total'),
+            'totalPending'           => $sales->where('payment_received', false)->sum('total'),
+            'totalCommissionPaid'    => $sales->where('commission_paid', true)->sum('commission_total'),
+            'totalCommissionPending' => $sales->where('commission_paid', false)->whereNotNull('commission_total')->where('commission_total', '>', 0)->sum('commission_total'),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'relatorio-' . \Illuminate\Support\Str::slug($seller->name) . '-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

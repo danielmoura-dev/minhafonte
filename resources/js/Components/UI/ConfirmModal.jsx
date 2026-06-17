@@ -12,9 +12,14 @@ const VARIANTS = {
         btn:     'bg-green-600 hover:bg-green-700',
     },
     warning: {
-        icon:    'bg-amber-50',
+        icon:      'bg-amber-50',
         iconColor: 'text-amber-500',
-        btn:     'bg-amber-500 hover:bg-amber-600',
+        btn:       'bg-amber-500 hover:bg-amber-600',
+    },
+    primary: {
+        icon:      'bg-primary-50',
+        iconColor: 'text-primary-600',
+        btn:       'bg-primary-600 hover:bg-primary-700',
     },
 };
 

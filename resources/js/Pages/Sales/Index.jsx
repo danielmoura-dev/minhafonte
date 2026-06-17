@@ -19,6 +19,14 @@ function formatDate(value) {
     return `${day}/${month}/${year}`;
 }
 
+function playCashSound() {
+    try {
+        const audio = new Audio('/sounds/cash.mp3');
+        audio.volume = 0.8;
+        audio.play();
+    } catch (_) { /* no audio support */ }
+}
+
 function ToggleStatus({ saleId, field, active, onRequest }) {
     return (
         <button
@@ -50,7 +58,30 @@ export default function SalesIndex({ sales, sellers, filters }) {
         return () => { clearTimeout(fadeTimer); clearTimeout(clearTimer); };
     }, []);
 
-    const [form, setForm]                   = useState(filters);
+    const [form, setForm] = useState(() => {
+        const hasUrlFilters = Object.values(filters).some(v => v);
+        if (hasUrlFilters) return filters;
+        try {
+            const saved = localStorage.getItem('sales_filters');
+            if (saved) return JSON.parse(saved);
+        } catch (_) {}
+        return filters;
+    });
+
+    useEffect(() => {
+        const hasUrlFilters = Object.values(filters).some(v => v);
+        if (hasUrlFilters || highlightId) return;
+        try {
+            const saved = localStorage.getItem('sales_filters');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Object.values(parsed).some(v => v)) {
+                    router.get(route('sales.index'), parsed, { replace: true, preserveState: true });
+                }
+            }
+        } catch (_) {}
+    }, []);
+
     const [deleting, setDeleting]           = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
     const [pendingToggle, setPendingToggle] = useState(null); // { saleId, field, active }
@@ -61,26 +92,24 @@ export default function SalesIndex({ sales, sellers, filters }) {
     }
 
     function confirmToggle() {
+        const isMarking = !pendingToggle.active;
         setLoadingToggle(true);
         router.patch(route('sales.toggle', pendingToggle.saleId), { field: pendingToggle.field }, {
             preserveScroll: true,
-            onFinish: () => {
-                setLoadingToggle(false);
-                setPendingToggle(null);
-            },
+            onSuccess: () => { if (isMarking) playCashSound(); },
+            onFinish:  () => { setLoadingToggle(false); setPendingToggle(null); },
         });
     }
 
     function handleFilter(e) {
         e.preventDefault();
-        router.get(route('sales.index'), form, {
-            preserveState: true,
-            replace: true,
-        });
+        try { localStorage.setItem('sales_filters', JSON.stringify(form)); } catch (_) {}
+        router.get(route('sales.index'), form, { preserveState: true, replace: true });
     }
 
     function handleReset() {
         setForm({});
+        try { localStorage.removeItem('sales_filters'); } catch (_) {}
         router.get(route('sales.index'), {}, { replace: true });
     }
 

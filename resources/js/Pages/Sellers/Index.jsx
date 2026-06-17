@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Search, Eye, Pencil, Trash2, Users, PowerOff, Power } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, Users, PowerOff, Power, AlertTriangle } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
@@ -151,7 +151,12 @@ export default function SellersIndex({ sellers, filters }) {
                                                 </div>
                                             )}
                                             <div>
-                                                <p className="font-medium text-gray-900">{seller.name}</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="font-medium text-gray-900">{seller.name}</p>
+                                                    {(seller.pending_payments_count > 0 || seller.pending_commissions_count > 0) && (
+                                                        <AlertTriangle size={13} className="text-amber-500 shrink-0" strokeWidth={2.5} />
+                                                    )}
+                                                </div>
                                                 {seller.email && (
                                                     <p className="text-xs text-gray-400">{seller.email}</p>
                                                 )}

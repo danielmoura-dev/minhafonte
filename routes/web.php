@@ -75,6 +75,8 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::patch('vendedores/{seller}/toggle-status', [SellerController::class, 'toggleStatus'])
         ->name('sellers.toggle-status');
+    Route::get('vendedores/{seller}/relatorio', [SellerController::class, 'report'])
+        ->name('sellers.report');
 
     // Produtos
     Route::resource('produtos', ProductController::class)->parameters([
