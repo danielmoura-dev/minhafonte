@@ -1,5 +1,5 @@
 import { Head, usePage, Link } from '@inertiajs/react';
-import { Droplets, LogOut, Download } from 'lucide-react';
+import { Droplets, LogOut, Download, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function FlashMessage() {
@@ -30,13 +30,73 @@ function FlashMessage() {
     );
 }
 
+function InstallBanner({ onInstall, onDismiss }) {
+    return (
+        <div className="bg-primary-600 px-4 py-2.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                    <Download size={15} className="text-white" strokeWidth={2} />
+                </div>
+                <div>
+                    <p className="text-xs font-bold text-white leading-none">Instalar aplicativo</p>
+                    <p className="text-xs text-white/75 leading-none mt-0.5">Adicione à tela inicial</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={onInstall}
+                    className="px-3 py-1.5 bg-white text-primary-700 text-xs font-bold rounded-lg active:scale-95 transition"
+                >
+                    Instalar
+                </button>
+                <button onClick={onDismiss} className="text-white/60 hover:text-white transition">
+                    <X size={16} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function InstallModal({ isIOS, onClose }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+                <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <Download size={22} className="text-primary-600" strokeWidth={1.75} />
+                </div>
+                <p className="text-sm font-semibold text-gray-900 mb-3">Adicionar à Tela Inicial</p>
+                {isIOS ? (
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                        Toque em <strong className="text-gray-700">⎙</strong> na barra do Safari e selecione <strong className="text-gray-700">"Adicionar à Tela de Início"</strong>
+                    </p>
+                ) : (
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                        Toque nos <strong className="text-gray-700">3 pontinhos ⋮</strong> no Chrome e selecione <strong className="text-gray-700">"Adicionar à tela inicial"</strong> ou <strong className="text-gray-700">"Instalar app"</strong>
+                    </p>
+                )}
+                <button
+                    onClick={onClose}
+                    className="mt-5 w-full py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg"
+                >
+                    Entendi
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function SellerLayout({ title, children }) {
     const { auth } = usePage().props;
     const seller = auth?.seller;
-    const [installPrompt, setInstallPrompt] = useState(window.__installPrompt ?? null);
+
     const isIOS        = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    const [showIOSHint, setShowIOSHint] = useState(false);
+
+    const [installPrompt, setInstallPrompt] = useState(window.__installPrompt ?? null);
+    const [bannerDismissed, setBannerDismissed] = useState(
+        () => sessionStorage.getItem('install_dismissed') === '1'
+    );
+    const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
         const handler = (e) => {
@@ -49,15 +109,25 @@ export default function SellerLayout({ title, children }) {
     }, []);
 
     async function handleInstall() {
-        if (isIOS) { setShowIOSHint(true); return; }
-        if (!installPrompt) return;
-        installPrompt.prompt();
-        await installPrompt.userChoice;
-        setInstallPrompt(null);
-        window.__installPrompt = null;
+        if (installPrompt) {
+            installPrompt.prompt();
+            const { outcome } = await installPrompt.userChoice;
+            if (outcome === 'accepted') {
+                setBannerDismissed(true);
+                setInstallPrompt(null);
+                window.__installPrompt = null;
+            }
+        } else {
+            setShowModal(true);
+        }
     }
 
-    const showInstallBtn = !isStandalone && (installPrompt || isIOS);
+    function handleDismiss() {
+        sessionStorage.setItem('install_dismissed', '1');
+        setBannerDismissed(true);
+    }
+
+    const showBanner = !isStandalone && !bannerDismissed;
 
     return (
         <>
@@ -80,17 +150,7 @@ export default function SellerLayout({ title, children }) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {showInstallBtn && (
-                            <button
-                                onClick={handleInstall}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary-50 text-primary-700 text-xs font-semibold border border-primary-200 transition active:scale-95"
-                                title="Instalar aplicativo"
-                            >
-                                <Download size={13} strokeWidth={2} />
-                                Instalar
-                            </button>
-                        )}
+                    <div className="flex items-center gap-3">
                         <div className="text-right">
                             <p className="text-xs font-semibold text-gray-700">{seller?.name}</p>
                             <p className="text-xs text-gray-400">
@@ -106,19 +166,12 @@ export default function SellerLayout({ title, children }) {
                             <LogOut size={16} strokeWidth={1.75} />
                         </Link>
                     </div>
-
-                    {showIOSHint && (
-                        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6 bg-black/40 backdrop-blur-sm" onClick={() => setShowIOSHint(false)}>
-                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
-                                <p className="text-sm font-semibold text-gray-900 mb-3">Adicionar à Tela Inicial</p>
-                                <p className="text-sm text-gray-500 leading-relaxed">
-                                    Toque em <span className="text-xl">⎙</span> na barra do Safari e selecione <strong className="text-gray-700">"Adicionar à Tela de Início"</strong>
-                                </p>
-                                <button onClick={() => setShowIOSHint(false)} className="mt-5 text-sm text-primary-600 font-medium">Fechar</button>
-                            </div>
-                        </div>
-                    )}
                 </header>
+
+                {/* Banner de instalação */}
+                {showBanner && (
+                    <InstallBanner onInstall={handleInstall} onDismiss={handleDismiss} />
+                )}
 
                 <FlashMessage />
 
@@ -127,6 +180,10 @@ export default function SellerLayout({ title, children }) {
                     {children}
                 </main>
             </div>
+
+            {showModal && (
+                <InstallModal isIOS={isIOS} onClose={() => setShowModal(false)} />
+            )}
         </>
     );
 }
