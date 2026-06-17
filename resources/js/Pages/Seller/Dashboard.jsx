@@ -70,10 +70,10 @@ function NotificationModal({ onClose }) {
     );
 }
 
-function InstallModal({ prompt, onClose }) {
+function InstallModal({ prompt, isIOS, onClose }) {
     async function handleInstall() {
         prompt.prompt();
-        const { outcome } = await prompt.userChoice;
+        await prompt.userChoice;
         onClose();
     }
 
@@ -86,21 +86,31 @@ function InstallModal({ prompt, onClose }) {
                 <h2 className="text-base font-semibold text-gray-900 text-center mb-2">
                     Instalar aplicativo
                 </h2>
-                <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
-                    Instale o Fonte Pro na sua tela inicial para acessar rapidamente suas informações.
-                </p>
+                {isIOS ? (
+                    <div className="text-sm text-gray-500 text-center mb-6 leading-relaxed space-y-1">
+                        <p>No Safari, toque no ícone</p>
+                        <p className="text-2xl">⎙</p>
+                        <p>e selecione <strong className="text-gray-700">"Adicionar à Tela de Início"</strong></p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
+                        Instale o Fonte Pro na sua tela inicial para acessar rapidamente suas informações.
+                    </p>
+                )}
                 <div className="flex flex-col gap-2">
-                    <button
-                        onClick={handleInstall}
-                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg text-sm transition"
-                    >
-                        Instalar
-                    </button>
+                    {!isIOS && (
+                        <button
+                            onClick={handleInstall}
+                            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg text-sm transition"
+                        >
+                            Instalar
+                        </button>
+                    )}
                     <button
                         onClick={onClose}
                         className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm transition"
                     >
-                        Agora não
+                        {isIOS ? 'Fechar' : 'Agora não'}
                     </button>
                 </div>
             </div>
@@ -111,10 +121,13 @@ function InstallModal({ prompt, onClose }) {
 const TABS = ['Vendas', 'Débitos', 'Comissões'];
 
 export default function SellerDashboard({ seller, summary, sales, pendingSales }) {
-    const [activeTab, setActiveTab]         = useState(0);
-    const [showNotifModal, setShowNotifModal] = useState(false);
+    const [activeTab, setActiveTab]           = useState(0);
+    const [showNotifModal, setShowNotifModal]   = useState(false);
     const [showInstallModal, setShowInstallModal] = useState(false);
-    const [installPrompt, setInstallPrompt] = useState(null);
+    const [installPrompt, setInstallPrompt]     = useState(null);
+
+    const isIOS        = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
     useEffect(() => {
         const notifAsked = localStorage.getItem('mf_notif_asked');
@@ -122,17 +135,26 @@ export default function SellerDashboard({ seller, summary, sales, pendingSales }
             setTimeout(() => setShowNotifModal(true), 1000);
         }
 
-        window.addEventListener('beforeinstallprompt', (e) => {
+        // Pega prompt já capturado antes do React montar
+        if (window.__installPrompt) {
+            setInstallPrompt(window.__installPrompt);
+        }
+        // Ou escuta se ainda não disparou
+        const handler = (e) => {
             e.preventDefault();
             setInstallPrompt(e);
-        });
+            window.__installPrompt = e;
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
     function handleNotifClose() {
         localStorage.setItem('mf_notif_asked', '1');
         setShowNotifModal(false);
         const installAsked = localStorage.getItem('mf_install_asked');
-        if (!installAsked && installPrompt) {
+        const canInstall = !isStandalone && (installPrompt || isIOS);
+        if (!installAsked && canInstall) {
             setTimeout(() => setShowInstallModal(true), 500);
         }
     }
@@ -284,8 +306,8 @@ export default function SellerDashboard({ seller, summary, sales, pendingSales }
             {showNotifModal && (
                 <NotificationModal onClose={handleNotifClose} />
             )}
-            {showInstallModal && installPrompt && (
-                <InstallModal prompt={installPrompt} onClose={handleInstallClose} />
+            {showInstallModal && (installPrompt || isIOS) && !isStandalone && (
+                <InstallModal prompt={installPrompt} isIOS={isIOS} onClose={handleInstallClose} />
             )}
         </SellerLayout>
     );

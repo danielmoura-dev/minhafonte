@@ -40,6 +40,11 @@
                     navigator.serviceWorker.register('/sw.js');
                 });
             }
+            // Captura o prompt de instalação antes do React montar
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__installPrompt = e;
+            });
         </script>
     </body>
 </html>
