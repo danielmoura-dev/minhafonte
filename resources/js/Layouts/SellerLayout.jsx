@@ -1,6 +1,13 @@
 import { Head, usePage, Link } from '@inertiajs/react';
-import { Droplets, LogOut, Download, X } from 'lucide-react';
+import { LogOut, Download, X, Home, Factory, ShoppingCart, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+const NAV_ITEMS = [
+    { label: 'Dashboard', icon: Home,         routeName: 'seller.dashboard', component: 'Seller/Dashboard' },
+    { label: 'Fábrica',   icon: Factory,      routeName: 'seller.fabrica',   component: 'Seller/Fabrica'   },
+    { label: 'Vendas',    icon: ShoppingCart, routeName: 'seller.vendas',    component: 'Seller/Vendas'    },
+    { label: 'Cliente',   icon: Users,        routeName: 'seller.clientes',  component: 'Seller/Clientes'  },
+];
 
 function FlashMessage() {
     const { flash } = usePage().props;
@@ -9,10 +16,7 @@ function FlashMessage() {
 
     useEffect(() => {
         if (flash?.success || flash?.error) {
-            setCurrent({
-                message: flash.success || flash.error,
-                type: flash.success ? 'success' : 'error',
-            });
+            setCurrent({ message: flash.success || flash.error, type: flash.success ? 'success' : 'error' });
             setVisible(true);
             const timer = setTimeout(() => setVisible(false), 4000);
             return () => clearTimeout(timer);
@@ -74,14 +78,39 @@ function InstallModal({ isIOS, onClose }) {
                         Toque nos <strong className="text-gray-700">3 pontinhos ⋮</strong> no Chrome e selecione <strong className="text-gray-700">"Adicionar à tela inicial"</strong> ou <strong className="text-gray-700">"Instalar app"</strong>
                     </p>
                 )}
-                <button
-                    onClick={onClose}
-                    className="mt-5 w-full py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg"
-                >
+                <button onClick={onClose} className="mt-5 w-full py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg">
                     Entendi
                 </button>
             </div>
         </div>
+    );
+}
+
+function BottomNav() {
+    const { component } = usePage();
+
+    return (
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-gray-200 z-30">
+            <div className="flex">
+                {NAV_ITEMS.map(({ label, icon: Icon, routeName, component: comp }) => {
+                    const active = component === comp;
+                    return (
+                        <Link
+                            key={routeName}
+                            href={route(routeName)}
+                            className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition ${
+                                active ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
+                            <Icon size={20} strokeWidth={active ? 2.25 : 1.75} />
+                            <span className={`text-[10px] font-semibold leading-none ${active ? 'text-primary-600' : 'text-gray-400'}`}>
+                                {label}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </nav>
     );
 }
 
@@ -137,17 +166,12 @@ export default function SellerLayout({ title, children }) {
                 {/* Header */}
                 <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center shrink-0">
-                            <Droplets size={13} className="text-white" strokeWidth={2} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-gray-900 leading-none">Fonte Pro</p>
-                            {seller?.company?.fantasy_name && (
-                                <p className="text-xs text-gray-400 leading-none mt-0.5">
-                                    {seller.company.fantasy_name}
-                                </p>
-                            )}
-                        </div>
+                        <img src="/images/logo2.png" alt="Fonte Pro" className="h-8 w-auto" />
+                        {seller?.company?.fantasy_name && (
+                            <p className="text-xs text-gray-400 leading-none">
+                                {seller.company.fantasy_name}
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -175,10 +199,12 @@ export default function SellerLayout({ title, children }) {
 
                 <FlashMessage />
 
-                {/* Content */}
-                <main className="flex-1 px-4 py-5">
+                {/* Content - pb-20 para não ficar atrás da bottom nav */}
+                <main className="flex-1 px-4 py-5 pb-24">
                     {children}
                 </main>
+
+                <BottomNav />
             </div>
 
             {showModal && (

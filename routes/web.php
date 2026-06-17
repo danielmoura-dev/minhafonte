@@ -129,5 +129,20 @@ Route::prefix('vendedor')->name('seller.')->group(function () {
     Route::middleware('auth.seller')->group(function () {
         Route::post('/logout', [SellerAuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/fabrica', [\App\Http\Controllers\Seller\SellerFabricaController::class, 'index'])->name('fabrica');
+
+        // Clientes do vendedor
+        Route::get('/clientes', [\App\Http\Controllers\Seller\SellerClientController::class, 'index'])->name('clientes');
+        Route::post('/clientes', [\App\Http\Controllers\Seller\SellerClientController::class, 'store'])->name('clientes.store');
+        Route::get('/clientes/{client}', [\App\Http\Controllers\Seller\SellerClientController::class, 'show'])->name('clientes.show');
+        Route::post('/clientes/{client}', [\App\Http\Controllers\Seller\SellerClientController::class, 'update'])->name('clientes.update');
+        Route::delete('/clientes/{client}', [\App\Http\Controllers\Seller\SellerClientController::class, 'destroy'])->name('clientes.destroy');
+        Route::patch('/clientes/{client}/toggle-status', [\App\Http\Controllers\Seller\SellerClientController::class, 'toggleStatus'])->name('clientes.toggle-status');
+
+        // Vendas do vendedor para seus clientes
+        Route::get('/vendas', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'index'])->name('vendas');
+        Route::post('/vendas', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'store'])->name('vendas.store');
+        Route::delete('/vendas/{sale}', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'destroy'])->name('vendas.destroy');
+        Route::patch('/vendas/{sale}/toggle', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'toggle'])->name('vendas.toggle');
     });
 });

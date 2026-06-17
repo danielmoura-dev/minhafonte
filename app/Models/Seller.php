@@ -62,6 +62,16 @@ class Seller extends Authenticatable
         return $this->hasMany(Sale::class);
     }
 
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class);
+    }
+
+    public function clientSales(): HasMany
+    {
+        return $this->hasMany(ClientSale::class);
+    }
+
     public function isBirthdayToday(): bool
     {
         $date = $this->person_type === 'individual'
