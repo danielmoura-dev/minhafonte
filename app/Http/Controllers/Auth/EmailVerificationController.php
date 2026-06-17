@@ -12,8 +12,12 @@ use Inertia\Response;
 
 class EmailVerificationController extends Controller
 {
-    public function notice(): Response
+    public function notice(Request $request): RedirectResponse|Response
     {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->route('dashboard');
+        }
+
         return Inertia::render('Auth/VerifyEmail', [
             'status' => session('status'),
         ]);
