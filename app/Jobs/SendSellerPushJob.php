@@ -44,7 +44,7 @@ class SendSellerPushJob implements ShouldQueue
             'body'  => $this->body,
             'url'   => $this->url,
             'icon'  => '/web-app-manifest-192x192.png',
-            'badge' => '/favicon-96x96.png',
+            'badge' => '/badge-96x96.png',
         ]);
 
         foreach ($subscriptions as $sub) {

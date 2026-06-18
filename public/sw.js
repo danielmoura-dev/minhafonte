@@ -69,7 +69,7 @@ self.addEventListener('push', (event) => {
         self.registration.showNotification(data.title ?? 'Fonte Pro', {
             body:  data.body  ?? '',
             icon:  data.icon  ?? '/web-app-manifest-192x192.png',
-            badge: data.badge ?? '/favicon-96x96.png',
+            badge: data.badge ?? '/badge-96x96.png',
             data:  { url: data.url ?? '/vendedor/fabrica' },
             requireInteraction: false,
         })

@@ -109,12 +109,11 @@ class SaleController extends Controller
             description: "Venda registrada. Total: R$ {$sale->total}",
         );
 
-        $productName = $sale->product?->name ?? 'produto';
         $totalFormatted = 'R$ ' . number_format((float) $sale->total, 2, ',', '.');
         SendSellerPushJob::dispatch(
             $sale->seller_id,
             'Nova venda registrada',
-            "{$totalFormatted} — {$productName}",
+            "Total: {$totalFormatted}",
             '/vendedor/fabrica',
         );
 
