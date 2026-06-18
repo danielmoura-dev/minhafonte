@@ -144,5 +144,9 @@ Route::prefix('vendedor')->name('seller.')->group(function () {
         Route::post('/vendas', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'store'])->name('vendas.store');
         Route::delete('/vendas/{sale}', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'destroy'])->name('vendas.destroy');
         Route::patch('/vendas/{sale}/toggle', [\App\Http\Controllers\Seller\SellerClientSaleController::class, 'toggle'])->name('vendas.toggle');
+
+        // Push notifications
+        Route::post('/push/subscribe', [\App\Http\Controllers\Seller\PushSubscriptionController::class, 'store'])->name('push.subscribe');
+        Route::delete('/push/unsubscribe', [\App\Http\Controllers\Seller\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
     });
 });

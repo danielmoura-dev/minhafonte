@@ -114,10 +114,49 @@ function BottomNav() {
     );
 }
 
-export default function SellerLayout({ title, children }) {
-    const { auth } = usePage().props;
-    const seller = auth?.seller;
+/* ─── Push subscription helper ─────────────────────────── */
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
 
+async function subscribeToPush(vapidPublicKey) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (sessionStorage.getItem('push_subscribed') === '1') return;
+
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const existing = await registration.pushManager.getSubscription();
+        const subscription = existing ?? await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+
+        const json = subscription.toJSON();
+        const res = await fetch(route('seller.push.subscribe'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+            },
+            body: JSON.stringify({
+                endpoint: json.endpoint,
+                keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+            }),
+        });
+
+        if (res.ok) sessionStorage.setItem('push_subscribed', '1');
+    } catch (err) {
+        console.warn('[Push] Falha ao subscrever:', err);
+    }
+}
+
+export default function SellerLayout({ title, children }) {
+    const { auth, vapidPublicKey } = usePage().props;
+    const seller = auth?.seller;
     const isIOS        = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
@@ -136,6 +175,18 @@ export default function SellerLayout({ title, children }) {
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
+
+    // Subscreve ao push: na montagem (se já tinha permissão) ou ao conceder agora
+    useEffect(() => {
+        if (!vapidPublicKey) return;
+
+        const trySubscribe = () => subscribeToPush(vapidPublicKey);
+
+        if (Notification.permission === 'granted') trySubscribe();
+
+        window.addEventListener('seller-push-permission-granted', trySubscribe);
+        return () => window.removeEventListener('seller-push-permission-granted', trySubscribe);
+    }, [vapidPublicKey]);
 
     async function handleInstall() {
         if (installPrompt) {

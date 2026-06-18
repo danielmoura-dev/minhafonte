@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\PushSubscription;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Minishlink\WebPush\Subscription;
+use Minishlink\WebPush\WebPush;
+
+class SendSellerPushJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 2;
+    public int $timeout = 30;
+
+    public function __construct(
+        private readonly int    $sellerId,
+        private readonly string $title,
+        private readonly string $body,
+        private readonly string $url = '/vendedor/fabrica',
+    ) {}
+
+    public function handle(): void
+    {
+        $subscriptions = PushSubscription::where('seller_id', $this->sellerId)->get();
+
+        if ($subscriptions->isEmpty()) return;
+
+        $webPush = new WebPush([
+            'VAPID' => [
+                'subject'    => config('services.vapid.subject'),
+                'publicKey'  => config('services.vapid.public_key'),
+                'privateKey' => config('services.vapid.private_key'),
+            ],
+        ]);
+
+        $payload = json_encode([
+            'title' => $this->title,
+            'body'  => $this->body,
+            'url'   => $this->url,
+            'icon'  => '/icons/icon-192.png',
+            'badge' => '/icons/icon-72.png',
+        ]);
+
+        foreach ($subscriptions as $sub) {
+            $webPush->queueNotification(
+                Subscription::create([
+                    'endpoint'        => $sub->endpoint,
+                    'contentEncoding' => 'aes128gcm',
+                    'keys' => [
+                        'p256dh' => $sub->p256dh,
+                        'auth'   => $sub->auth,
+                    ],
+                ]),
+                $payload
+            );
+        }
+
+        foreach ($webPush->flush() as $report) {
+            if ($report->isSubscriptionExpired()) {
+                PushSubscription::where('endpoint', (string) $report->getEndpoint())->delete();
+            }
+        }
+    }
+}

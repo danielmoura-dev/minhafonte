@@ -28,7 +28,10 @@ function SummaryCard({ icon: Icon, label, value, color }) {
 
 function NotificationModal({ onClose }) {
     async function requestPermission() {
-        await Notification.requestPermission();
+        const result = await Notification.requestPermission();
+        if (result === 'granted') {
+            window.dispatchEvent(new CustomEvent('seller-push-permission-granted'));
+        }
         onClose();
     }
     return (

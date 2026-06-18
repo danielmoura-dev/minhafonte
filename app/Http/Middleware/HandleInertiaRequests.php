@@ -32,6 +32,7 @@ class HandleInertiaRequests extends Middleware
                 'error'   => fn () => $request->session()->get('error'),
                 'status'  => fn () => $request->session()->get('status'),
             ],
+            'vapidPublicKey' => config('services.vapid.public_key'),
         ]);
     }
 }

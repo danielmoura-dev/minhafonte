@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sale;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sale\StoreSaleRequest;
 use App\Http\Requests\Sale\UpdateSaleRequest;
+use App\Jobs\SendSellerPushJob;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Seller;
@@ -108,6 +109,15 @@ class SaleController extends Controller
             description: "Venda registrada. Total: R$ {$sale->total}",
         );
 
+        $productName = $sale->product?->name ?? 'produto';
+        $totalFormatted = 'R$ ' . number_format((float) $sale->total, 2, ',', '.');
+        SendSellerPushJob::dispatch(
+            $sale->seller_id,
+            'Nova venda registrada',
+            "{$totalFormatted} — {$productName}",
+            '/vendedor/fabrica',
+        );
+
         return redirect()
             ->route('sales.index')
             ->with('success', 'Venda registrada com sucesso!');
@@ -181,7 +191,8 @@ class SaleController extends Controller
             abort(422);
         }
 
-        $sale->$field = !$sale->$field;
+        $wasAlreadyPaid = $sale->$field;
+        $sale->$field   = !$wasAlreadyPaid;
 
         if ($field === 'payment_received') {
             $sale->payment_received_at = $sale->payment_received ? now() : null;
@@ -190,6 +201,17 @@ class SaleController extends Controller
         }
 
         $sale->save();
+
+        // Notifica quando pagamento é confirmado
+        if ($field === 'payment_received' && $sale->payment_received) {
+            $totalFormatted = 'R$ ' . number_format((float) $sale->total, 2, ',', '.');
+            SendSellerPushJob::dispatch(
+                $sale->seller_id,
+                'Pagamento recebido',
+                "{$totalFormatted} confirmado",
+                '/vendedor/fabrica',
+            );
+        }
 
         return back();
     }

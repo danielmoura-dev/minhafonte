@@ -67,8 +67,31 @@ self.addEventListener('push', (event) => {
     const data = event.data?.json() ?? {};
     event.waitUntil(
         self.registration.showNotification(data.title ?? 'Fonte Pro', {
-            body: data.body ?? '',
-            icon: '/icons/icon-192.png',
+            body:  data.body  ?? '',
+            icon:  data.icon  ?? '/icons/icon-192.png',
+            badge: data.badge ?? '/icons/icon-72.png',
+            data:  { url: data.url ?? '/vendedor/fabrica' },
+            requireInteraction: false,
+        })
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data?.url ?? '/vendedor/fabrica';
+    const fullUrl = self.location.origin + url;
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // Se já tem uma janela do app aberta, foca e navega
+            for (const client of windowClients) {
+                if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+                    client.focus();
+                    return client.navigate(fullUrl);
+                }
+            }
+            // Senão, abre nova janela
+            return clients.openWindow(fullUrl);
         })
     );
 });
