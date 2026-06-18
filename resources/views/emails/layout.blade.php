@@ -15,16 +15,10 @@
                     {{-- Header --}}
                     <tr>
                         <td align="center" style="padding-bottom:24px;">
-                            <table cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td style="background-color:#0284c7;border-radius:12px;width:40px;height:40px;text-align:center;vertical-align:middle;">
-                                        <span style="color:#ffffff;font-size:20px;font-weight:700;line-height:40px;">&#11835;</span>
-                                    </td>
-                                    <td style="padding-left:10px;vertical-align:middle;">
-                                        <span style="font-size:20px;font-weight:700;color:#0f172a;letter-spacing:-0.5px;">Fonte Pro</span>
-                                    </td>
-                                </tr>
-                            </table>
+                            <img src="{{ asset('images/logo.png') }}"
+                                 alt="Fonte Pro"
+                                 width="140"
+                                 style="height:auto;display:block;">
                         </td>
                     </tr>
 
