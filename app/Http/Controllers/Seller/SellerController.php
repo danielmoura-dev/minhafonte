@@ -103,10 +103,39 @@ class SellerController extends Controller
         $pendingPaymentsCount     = $sales->where('payment_received', false)->count();
         $pendingCommissionsCount  = $commissions->where('commission_paid', false)->count();
 
+        $salesCount  = $sales->count();
+        $totalSold   = $sales->sum('total');
+        $itemsCount  = $sales->sum('quantity');
+
+        $salesByProduct = $sales
+            ->groupBy(fn ($s) => $s->product?->name ?? 'Produto removido')
+            ->map(fn ($group, $name) => [
+                'name'     => $name,
+                'count'    => $group->count(),
+                'quantity' => $group->sum('quantity'),
+                'total'    => $group->sum('total'),
+            ])
+            ->sortByDesc('total')
+            ->values();
+
+        $commissionSales = $sales->where('commission_percentage', '>', 0);
+
+        $indicators = [
+            'sales_count'          => $salesCount,
+            'items_count'          => $itemsCount,
+            'average_ticket'       => $salesCount > 0 ? round($totalSold / $salesCount, 2) : 0,
+            'highest_sale'         => $sales->max('total') ?? 0,
+            'lowest_sale'          => $sales->min('total') ?? 0,
+            'average_commission'   => $commissionSales->count() > 0
+                                        ? round($commissionSales->avg('commission_percentage'), 1)
+                                        : null,
+            'sales_by_product'     => $salesByProduct,
+        ];
+
         return Inertia::render('Sellers/Show', [
             'seller'  => $seller,
             'summary' => [
-                'total_sold'       => $sales->sum('total'),
+                'total_sold'       => $totalSold,
                 'total_received'   => $sales->where('payment_received', true)->sum('total'),
                 'total_pending'    => $sales->where('payment_received', false)->sum('total'),
                 'total_commission' => $sales->sum('commission_total'),
@@ -116,6 +145,7 @@ class SellerController extends Controller
             'payments'                => $payments,
             'pendingPaymentsCount'    => $pendingPaymentsCount,
             'pendingCommissionsCount' => $pendingCommissionsCount,
+            'indicators'              => $indicators,
         ]);
     }
 

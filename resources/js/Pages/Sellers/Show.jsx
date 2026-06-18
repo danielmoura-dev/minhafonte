@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, AlertTriangle, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power, FileText, X, Download } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertTriangle, Pencil, DollarSign, TrendingUp, Clock, Wallet, PowerOff, Power, FileText, X, Download, BarChart2, ShoppingCart, Package } from 'lucide-react';
 import Badge from '@/Components/UI/Badge';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
@@ -39,7 +39,7 @@ function EmptyState({ message }) {
     );
 }
 
-export default function SellerShow({ seller, summary, sales, commissions, payments, pendingPaymentsCount, pendingCommissionsCount }) {
+export default function SellerShow({ seller, summary, sales, commissions, payments, pendingPaymentsCount, pendingCommissionsCount, indicators }) {
     const [activeTab, setActiveTab]           = useState(0);
     const [toggling, setToggling]             = useState(false);
     const [loadingToggle, setLoadingToggle]   = useState(false);
@@ -185,6 +185,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                         { label: 'Histórico de vendas', badge: 0 },
                         { label: 'Comissões',           badge: pendingCommissionsCount },
                         { label: 'Pagamentos',          badge: pendingPaymentsCount },
+                        { label: 'Indicadores',         badge: 0 },
                     ].map((tab, i) => (
                         <button
                             key={i}
@@ -357,6 +358,73 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                             </table>
                         )
                     )}
+
+                    {/* Indicadores */}
+                    {activeTab === 4 && (
+                        indicators.sales_count === 0 ? (
+                            <EmptyState message="Nenhuma venda registrada para calcular indicadores." />
+                        ) : (
+                            <div className="space-y-6">
+
+                                {/* KPIs principais */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {[
+                                        { icon: ShoppingCart, label: 'Nº de vendas',   value: indicators.sales_count,                             color: 'bg-primary-600',  format: 'number' },
+                                        { icon: Package,      label: 'Itens vendidos', value: indicators.items_count,                             color: 'bg-indigo-500',   format: 'number' },
+                                        { icon: DollarSign,   label: 'Ticket médio',   value: indicators.average_ticket,                          color: 'bg-violet-500',   format: 'currency' },
+                                        { icon: TrendingUp,   label: 'Maior venda',    value: indicators.highest_sale,                            color: 'bg-green-500',    format: 'currency' },
+                                        { icon: Clock,        label: 'Menor venda',    value: indicators.lowest_sale,                             color: 'bg-amber-500',    format: 'currency' },
+                                        ...(indicators.average_commission !== null ? [
+                                        { icon: BarChart2,    label: 'Comissão média', value: `${indicators.average_commission}%`,                color: 'bg-pink-500',     format: 'raw' },
+                                        ] : []),
+                                    ].map(({ icon: Icon, label, value, color, format }) => (
+                                        <div key={label} className="bg-gray-50 rounded-xl p-4 flex items-start gap-3">
+                                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                                                <Icon size={16} strokeWidth={1.75} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider leading-none">{label}</p>
+                                                <p className="text-base font-bold text-gray-900 mt-1">
+                                                    {format === 'currency' ? formatCurrency(value) : format === 'number' ? value.toLocaleString('pt-BR') : value}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Vendas por produto */}
+                                {indicators.sales_by_product.length > 0 && (
+                                    <div>
+                                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Vendas por produto</h3>
+                                        <div className="space-y-3">
+                                            {(() => {
+                                                const maxTotal = indicators.sales_by_product[0]?.total ?? 1;
+                                                return indicators.sales_by_product.map(p => (
+                                                    <div key={p.name}>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-sm font-medium text-gray-700 truncate max-w-[55%]">{p.name}</span>
+                                                            <div className="flex items-center gap-3 text-xs text-gray-400 shrink-0">
+                                                                <span>{p.count} {p.count === 1 ? 'venda' : 'vendas'} · {p.quantity} {p.quantity === 1 ? 'item' : 'itens'}</span>
+                                                                <span className="font-semibold text-gray-700">{formatCurrency(p.total)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-primary-500 rounded-full transition-all"
+                                                                style={{ width: `${Math.max(4, (p.total / maxTotal) * 100)}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        )
+                    )}
+
                 </div>
             </div>
             <ConfirmModal
