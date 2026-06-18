@@ -322,17 +322,25 @@ function ClientModal({ client = null, onClose }) {
 }
 
 /* ─── Main page ────────────────────────────────────────── */
-export default function SellerClientes({ clients, filters }) {
+export default function SellerClientes({ clients, cities = [], filters }) {
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [city, setCity] = useState(filters?.city ?? '');
     const [showModal, setShowModal] = useState(false);
     const [editClient, setEditClient] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [confirmToggle, setConfirmToggle] = useState(null);
     const [openMenu, setOpenMenu] = useState(null);
 
-    function doSearch(val) {
-        setSearch(val);
-        router.get(route('seller.clientes'), { search: val }, { preserveState: true, replace: true });
+    function applyFilters(next = {}) {
+        const nextSearch = next.search !== undefined ? next.search : search;
+        const nextCity   = next.city   !== undefined ? next.city   : city;
+        if (next.search !== undefined) setSearch(next.search);
+        if (next.city   !== undefined) setCity(next.city);
+        router.get(
+            route('seller.clientes'),
+            { search: nextSearch || undefined, city: nextCity || undefined },
+            { preserveState: true, replace: true },
+        );
     }
 
     function openEdit(client) { setOpenMenu(null); setEditClient(client); }
@@ -370,16 +378,32 @@ export default function SellerClientes({ clients, filters }) {
                 </button>
             </div>
 
-            {/* Busca */}
-            <div className="relative mb-4">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                    type="search"
-                    value={search}
-                    onChange={e => doSearch(e.target.value)}
-                    placeholder="Buscar cliente..."
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                />
+            {/* Busca + filtro de cidade */}
+            <div className="flex flex-col gap-2 mb-4">
+                <div className="relative">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={e => applyFilters({ search: e.target.value })}
+                        placeholder="Buscar cliente..."
+                        className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    />
+                </div>
+                {cities.length > 0 && (
+                    <div className="relative">
+                        <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <select
+                            value={city}
+                            onChange={e => applyFilters({ city: e.target.value })}
+                            className="w-full appearance-none pl-9 pr-9 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        >
+                            <option value="">Todas as cidades</option>
+                            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Lista */}

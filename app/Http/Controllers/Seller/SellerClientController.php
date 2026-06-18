@@ -15,16 +15,27 @@ class SellerClientController extends Controller
     {
         $seller = auth('seller')->user();
         $search = $request->get('search', '');
+        $city   = $request->get('city', '');
 
         $clients = $seller->clients()
             ->withCount('clientSales')
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($city, fn ($q) => $q->where('city', $city))
             ->orderBy('name')
             ->get();
 
+        // Cidades distintas (de todos os clientes do vendedor) para o filtro
+        $cities = $seller->clients()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city');
+
         return Inertia::render('Seller/Clientes', [
             'clients' => $clients,
-            'filters' => ['search' => $search],
+            'cities'  => $cities,
+            'filters' => ['search' => $search, 'city' => $city],
         ]);
     }
 
