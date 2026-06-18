@@ -113,7 +113,7 @@ export default function SellerShow({ seller, summary, sales, commissions, paymen
                             />
                         ) : (
                             <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg shrink-0">
-                                {avatar}
+                                {seller.name.charAt(0).toUpperCase()}
                             </div>
                         )}
                         <div>
