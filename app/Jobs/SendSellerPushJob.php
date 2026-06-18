@@ -62,8 +62,21 @@ class SendSellerPushJob implements ShouldQueue
         }
 
         foreach ($webPush->flush() as $report) {
+            $endpoint = (string) $report->getEndpoint();
+
+            if ($report->isSuccess()) {
+                \Log::info('[Push] enviado com sucesso', ['endpoint' => $endpoint]);
+                continue;
+            }
+
+            \Log::warning('[Push] falha no envio', [
+                'endpoint' => $endpoint,
+                'expired'  => $report->isSubscriptionExpired(),
+                'reason'   => $report->getReason(),
+            ]);
+
             if ($report->isSubscriptionExpired()) {
-                PushSubscription::where('endpoint', (string) $report->getEndpoint())->delete();
+                PushSubscription::where('endpoint', $endpoint)->delete();
             }
         }
     }
