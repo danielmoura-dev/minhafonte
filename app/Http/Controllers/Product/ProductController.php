@@ -32,9 +32,37 @@ class ProductController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $allProducts = Product::fromCompany(Auth::id())
+            ->withCount('sales')
+            ->withSum('sales', 'total')
+            ->withSum('sales', 'quantity')
+            ->withSum('sales', 'commission_total')
+            ->get(['id', 'name', 'code', 'active']);
+
+        $grandTotal = (float) $allProducts->sum('sales_sum_total');
+
+        $productIndicators = $allProducts
+            ->sortByDesc(fn ($p) => (float) ($p->sales_sum_total ?? 0))
+            ->map(fn ($p) => [
+                'id'          => $p->id,
+                'name'        => $p->name,
+                'code'        => $p->code,
+                'active'      => $p->active,
+                'sales_count' => $p->sales_count,
+                'quantity'    => (int) ($p->sales_sum_quantity ?? 0),
+                'total'       => (float) ($p->sales_sum_total ?? 0),
+                'commissions' => (float) ($p->sales_sum_commission_total ?? 0),
+                'percentage'  => $grandTotal > 0
+                    ? round((float) ($p->sales_sum_total ?? 0) / $grandTotal * 100, 1)
+                    : 0,
+            ])
+            ->values();
+
         return Inertia::render('Products/Index', [
-            'products' => $products,
-            'filters'  => $request->only('search', 'status'),
+            'products'          => $products,
+            'filters'           => $request->only('search', 'status'),
+            'productIndicators' => $productIndicators,
+            'grandTotal'        => $grandTotal,
         ]);
     }
 
