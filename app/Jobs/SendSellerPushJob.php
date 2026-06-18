@@ -37,6 +37,10 @@ class SendSellerPushJob implements ShouldQueue
                 'publicKey'  => config('services.vapid.public_key'),
                 'privateKey' => config('services.vapid.private_key'),
             ],
+        ], [
+            // urgência alta acorda o aparelho mesmo em Doze; TTL guarda 24h se offline
+            'urgency' => 'high',
+            'TTL'     => 86400,
         ]);
 
         $payload = json_encode([
