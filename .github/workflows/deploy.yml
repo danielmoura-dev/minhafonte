@@ -26,4 +26,5 @@ jobs:
             php artisan view:cache
             chown -R www-data:www-data storage bootstrap/cache
             php artisan optimize:clear
+            php artisan queue:restart
             echo "Deploy concluído!"

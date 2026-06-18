@@ -8,6 +8,9 @@ use App\Models\Seller;
 use App\Policies\ProductPolicy;
 use App\Policies\SalePolicy;
 use App\Policies\SellerPolicy;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,5 +23,36 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Seller::class, SellerPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Sale::class, SalePolicy::class);
+
+        $this->configureEmails();
+    }
+
+    private function configureEmails(): void
+    {
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            return (new MailMessage)
+                ->subject('Confirme seu e-mail — Fonte Pro')
+                ->view('emails.verify-email', [
+                    'url'  => $url,
+                    'name' => $notifiable->name,
+                ]);
+        });
+
+        ResetPassword::toMailUsing(function (object $notifiable, string $token): MailMessage {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            $expireMinutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+
+            return (new MailMessage)
+                ->subject('Redefinição de senha — Fonte Pro')
+                ->view('emails.reset-password', [
+                    'url'           => $url,
+                    'name'          => $notifiable->name,
+                    'expireMinutes' => $expireMinutes,
+                ]);
+        });
     }
 }
