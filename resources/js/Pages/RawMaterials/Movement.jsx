@@ -1,6 +1,6 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, useForm } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, FlaskConical, X, AlertTriangle } from 'lucide-react';
 import { unitLabel, unitAbbr, formatQuantity, MOVEMENT_REASONS, reasonLabel } from '@/utils/rawMaterialUnits';
 
@@ -48,6 +48,17 @@ export default function Movement({ materials, suppliers, preselectedId }) {
 
     const isCompra = data.type === 'entrada' && data.reason === 'compra';
     const reasons  = MOVEMENT_REASONS[data.type] ?? [];
+
+    // Em compra, pré-preenche o valor unitário com o preço atual da matéria-prima
+    // (continua editável, pois é o valor efetivamente pago). O total recalcula sozinho.
+    useEffect(() => {
+        if (isCompra && material) {
+            const cp = parseFloat(material.current_price) || 0;
+            setData('unit_price', cp ? String(cp) : '');
+            setPriceDisplay(cp ? cp.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCompra, data.raw_material_id]);
 
     const qtyNum   = parseFloat(data.quantity || 0) || 0;
     const priceNum = parseFloat(data.unit_price || 0) || 0;
