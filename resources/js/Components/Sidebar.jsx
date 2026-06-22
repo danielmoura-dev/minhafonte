@@ -5,6 +5,7 @@ import {
     Package,
     ShoppingCart,
     FlaskConical,
+    Truck,
     ChevronDown,
     LogOut,
 } from 'lucide-react';
@@ -70,9 +71,10 @@ function SubNavItem({ href, label, active }) {
 }
 
 function resolveOpenGroup(url) {
-    if (url.startsWith('/vendedores')) return 'sellers';
-    if (url.startsWith('/produtos'))   return 'products';
-    if (url.startsWith('/vendas'))     return 'sales';
+    if (url.startsWith('/vendedores'))   return 'sellers';
+    if (url.startsWith('/produtos'))     return 'products';
+    if (url.startsWith('/vendas'))       return 'sales';
+    if (url.startsWith('/fornecedores')) return 'suppliers';
     return null;
 }
 
@@ -167,6 +169,24 @@ export default function Sidebar() {
                             href={route('sales.index')}
                             label="Gerenciar"
                             active={url === '/vendas'}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={Truck}
+                        label="Fornecedores"
+                        open={openGroup === 'suppliers'}
+                        onToggle={() => toggle('suppliers')}
+                    >
+                        <SubNavItem
+                            href={route('suppliers.create')}
+                            label="Cadastrar"
+                            active={url === '/fornecedores/create'}
+                        />
+                        <SubNavItem
+                            href={route('suppliers.index')}
+                            label="Gerenciar"
+                            active={url === '/fornecedores'}
                         />
                     </NavGroup>
                 </div>

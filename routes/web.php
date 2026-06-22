@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\RawMaterial\RawMaterialController;
 use App\Http\Controllers\Sale\SaleController;
+use App\Http\Controllers\Supplier\SupplierController;
 use App\Http\Controllers\Seller\SellerAuthController;
 use App\Http\Controllers\Seller\SellerController;
 use App\Http\Controllers\Seller\SellerDashboardController;
@@ -91,6 +92,20 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::patch('produtos/{product}/toggle-status', [ProductController::class, 'toggleStatus'])
         ->name('products.toggle-status');
+
+    // Fornecedores
+    Route::resource('fornecedores', SupplierController::class)->parameters([
+        'fornecedores' => 'supplier',
+    ])->names([
+        'index'   => 'suppliers.index',
+        'create'  => 'suppliers.create',
+        'store'   => 'suppliers.store',
+        'edit'    => 'suppliers.edit',
+        'update'  => 'suppliers.update',
+        'destroy' => 'suppliers.destroy',
+    ])->except('show');
+    Route::patch('fornecedores/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])
+        ->name('suppliers.toggle-status');
 
     // Vendas
     Route::resource('vendas', SaleController::class)->parameters([
