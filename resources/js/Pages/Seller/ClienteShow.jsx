@@ -1,6 +1,11 @@
 import SellerLayout from '@/Layouts/SellerLayout';
-import { Link } from '@inertiajs/react';
-import { ArrowLeft, Phone, Mail, MapPin, AlertTriangle } from 'lucide-react';
+import { Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { ArrowLeft, Phone, Mail, MapPin, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react';
+
+function playCash() {
+    try { new Audio('/sounds/cash.mp3').play(); } catch {}
+}
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
@@ -48,8 +53,49 @@ function SummaryStrip({ total, received, pending }) {
     );
 }
 
+/* ─── Confirm pay modal ────────────────────────────────── */
+function ConfirmPayModal({ sale, onConfirm, onClose }) {
+    const isPaid = sale.payment_received;
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-6 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                <div className={`w-12 h-12 ${isPaid ? 'bg-amber-50' : 'bg-green-50'} rounded-xl flex items-center justify-center mx-auto mb-4`}>
+                    {isPaid
+                        ? <RotateCcw size={24} className="text-amber-500" strokeWidth={1.75} />
+                        : <CheckCircle size={24} className="text-green-500" strokeWidth={1.75} />
+                    }
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 text-center mb-1">
+                    {isPaid ? 'Cancelar pagamento?' : 'Confirmar pagamento'}
+                </h3>
+                <p className="text-sm text-gray-500 text-center mb-1">{sale.description}</p>
+                <p className={`text-2xl font-bold text-center mb-6 ${isPaid ? 'text-amber-500' : 'text-green-600'}`}>
+                    {formatCurrency(sale.amount)}
+                </p>
+                <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600">Cancelar</button>
+                    <button onClick={onConfirm} className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold ${isPaid ? 'bg-amber-500' : 'bg-green-500'}`}>
+                        {isPaid ? 'Sim, cancelar' : 'Confirmar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function ClienteShow({ client, sales, summary }) {
     const hasPending = sales.some(s => !s.payment_received);
+    const [confirmPay, setConfirmPay] = useState(null);
+
+    function executePay() {
+        router.patch(route('seller.vendas.toggle', confirmPay.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                if (!confirmPay.payment_received) playCash();
+                setConfirmPay(null);
+            },
+        });
+    }
 
     return (
         <SellerLayout title={client.name}>
@@ -134,28 +180,53 @@ export default function ClienteShow({ client, sales, summary }) {
                     {sales.length === 0 ? (
                         <p className="text-center py-8 text-sm text-gray-400">Nenhuma venda registrada.</p>
                     ) : sales.map(sale => (
-                        <Link
+                        <div
                             key={sale.id}
-                            href={`${route('seller.vendas')}?highlight=${sale.id}`}
-                            className="flex items-start justify-between py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition"
+                            className="flex items-start justify-between py-2.5 border-b border-gray-50 last:border-0 gap-3"
                         >
-                            <div>
+                            <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-800">{sale.description}</p>
                                 <p className="text-xs text-gray-400 mt-0.5">{formatDate(sale.sale_date)}</p>
                                 {sale.payment_received && sale.payment_received_at && (
                                     <p className="text-xs text-green-500 mt-0.5">Pago em {formatDate(sale.payment_received_at)}</p>
                                 )}
                             </div>
-                            <div className="text-right shrink-0 ml-3">
-                                <p className="text-sm font-bold text-gray-900">{formatCurrency(sale.amount)}</p>
-                                <span className={`text-xs font-medium ${sale.payment_received ? 'text-green-500' : 'text-amber-500'}`}>
-                                    {sale.payment_received ? 'Pago' : 'Pendente'}
-                                </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-gray-900">{formatCurrency(sale.amount)}</p>
+                                    <span className={`text-xs font-medium ${sale.payment_received ? 'text-green-500' : 'text-amber-500'}`}>
+                                        {sale.payment_received ? 'Pago' : 'Pendente'}
+                                    </span>
+                                </div>
+                                {!sale.payment_received ? (
+                                    <button
+                                        onClick={() => setConfirmPay(sale)}
+                                        className="w-8 h-8 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg flex items-center justify-center transition active:scale-95"
+                                        title="Marcar como pago"
+                                    >
+                                        <CheckCircle size={16} />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setConfirmPay(sale)}
+                                        className="w-8 h-8 bg-amber-50 hover:bg-amber-100 text-amber-500 rounded-lg flex items-center justify-center transition active:scale-95"
+                                        title="Cancelar pagamento"
+                                    >
+                                        <RotateCcw size={14} />
+                                    </button>
+                                )}
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             </div>
+            {confirmPay && (
+                <ConfirmPayModal
+                    sale={confirmPay}
+                    onConfirm={executePay}
+                    onClose={() => setConfirmPay(null)}
+                />
+            )}
         </SellerLayout>
     );
 }
