@@ -75,6 +75,7 @@ function resolveOpenGroup(url) {
     if (url.startsWith('/produtos'))     return 'products';
     if (url.startsWith('/vendas'))       return 'sales';
     if (url.startsWith('/fornecedores')) return 'suppliers';
+    if (url.startsWith('/materia-prima')) return 'rawMaterials';
     return null;
 }
 
@@ -189,23 +190,24 @@ export default function Sidebar() {
                             active={url === '/fornecedores'}
                         />
                     </NavGroup>
-                </div>
 
-                <div className="mt-3">
-                    <p className="px-3 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                        Em breve
-                    </p>
-
-                    <Link
-                        href={route('raw-materials.index')}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed select-none pointer-events-none"
+                    <NavGroup
+                        icon={FlaskConical}
+                        label="Matéria-Prima"
+                        open={openGroup === 'rawMaterials'}
+                        onToggle={() => toggle('rawMaterials')}
                     >
-                        <FlaskConical size={17} strokeWidth={1.75} />
-                        <span>Matéria Prima</span>
-                        <span className="ml-auto text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">
-                            Em breve
-                        </span>
-                    </Link>
+                        <SubNavItem
+                            href={route('raw-materials.create')}
+                            label="Cadastrar"
+                            active={url === '/materia-prima/create'}
+                        />
+                        <SubNavItem
+                            href={route('raw-materials.index')}
+                            label="Gerenciar"
+                            active={url === '/materia-prima'}
+                        />
+                    </NavGroup>
                 </div>
             </nav>
 

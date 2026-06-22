@@ -120,8 +120,31 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
 
-    // Matéria Prima
-    Route::get('/materia-prima', [RawMaterialController::class, 'index'])->name('raw-materials.index');
+    // Matéria-Prima — movimentação de estoque (rotas estáticas antes do resource)
+    Route::get('materia-prima/movimentacao/nova', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'create'])
+        ->name('raw-materials.movements.create');
+    Route::post('materia-prima/movimentacao', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'store'])
+        ->name('raw-materials.movements.store');
+    Route::get('materia-prima/movimentacao/historico', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'history'])
+        ->name('raw-materials.movements.history');
+
+    // Matéria-Prima
+    Route::resource('materia-prima', RawMaterialController::class)->parameters([
+        'materia-prima' => 'rawMaterial',
+    ])->names([
+        'index'   => 'raw-materials.index',
+        'create'  => 'raw-materials.create',
+        'store'   => 'raw-materials.store',
+        'edit'    => 'raw-materials.edit',
+        'update'  => 'raw-materials.update',
+        'destroy' => 'raw-materials.destroy',
+    ])->except('show');
+    Route::patch('materia-prima/{rawMaterial}/toggle-status', [RawMaterialController::class, 'toggleStatus'])
+        ->name('raw-materials.toggle-status');
+    Route::patch('materia-prima/{rawMaterial}/preco', [RawMaterialController::class, 'updatePrice'])
+        ->name('raw-materials.update-price');
+    Route::get('materia-prima/{rawMaterial}/historico-precos', [RawMaterialController::class, 'priceHistory'])
+        ->name('raw-materials.price-history');
 });
 
 // -----------------------------------------------
