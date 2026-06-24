@@ -25,6 +25,7 @@ class RawMaterialMovementController extends Controller
 
         $materials = RawMaterial::fromCompany(Auth::id())
             ->where('active', true)
+            ->where('controls_stock', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'unit', 'current_price', 'current_stock', 'min_quantity', 'photo']);
 

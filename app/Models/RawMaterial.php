@@ -19,6 +19,7 @@ class RawMaterial extends Model
         'code',
         'name',
         'unit',
+        'controls_stock',
         'current_price',
         'min_quantity',
         'current_stock',
@@ -31,16 +32,17 @@ class RawMaterial extends Model
     protected function casts(): array
     {
         return [
-            'current_price' => 'decimal:2',
-            'min_quantity'  => 'decimal:3',
-            'current_stock' => 'decimal:3',
-            'active'        => 'boolean',
+            'controls_stock' => 'boolean',
+            'current_price'  => 'decimal:2',
+            'min_quantity'   => 'decimal:3',
+            'current_stock'  => 'decimal:3',
+            'active'         => 'boolean',
         ];
     }
 
     public function getNeedsRestockAttribute(): bool
     {
-        return (float) $this->current_stock <= (float) $this->min_quantity;
+        return $this->controls_stock && (float) $this->current_stock <= (float) $this->min_quantity;
     }
 
     public function company(): BelongsTo

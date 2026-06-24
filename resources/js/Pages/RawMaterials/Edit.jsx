@@ -4,11 +4,12 @@ import RawMaterialForm from '@/Components/RawMaterials/RawMaterialForm';
 
 export default function RawMaterialEdit({ material, units }) {
     const { data, setData, post, processing, errors } = useForm({
-        _method:      'PUT',
-        name:         material.name,
-        unit:         material.unit ?? '',
-        min_quantity: material.min_quantity ?? '',
-        photo:        null,
+        _method:        'PUT',
+        name:           material.name,
+        unit:           material.unit ?? '',
+        controls_stock: material.controls_stock ?? true,
+        min_quantity:   material.min_quantity ?? '',
+        photo:          null,
     });
 
     function handleSubmit(e) {

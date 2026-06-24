@@ -37,6 +37,7 @@ class RawMaterialController extends Controller
         // Quantos itens (no total) estão abaixo do mínimo
         $restockCount = RawMaterial::fromCompany(Auth::id())
             ->where('active', true)
+            ->where('controls_stock', true)
             ->whereColumn('current_stock', '<=', 'min_quantity')
             ->count();
 
@@ -63,6 +64,11 @@ class RawMaterialController extends Controller
         $data = $request->validated();
         $data['company_id']    = Auth::id();
         $data['current_stock'] = 0;
+
+        // Sem controle de estoque: quantidade mínima não se aplica
+        if (! $request->boolean('controls_stock')) {
+            $data['min_quantity'] = 0;
+        }
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')->store('raw-materials/photos', 'public');
@@ -101,6 +107,10 @@ class RawMaterialController extends Controller
 
         $data = $request->validated();
         unset($data['photo']);
+
+        if (! $request->boolean('controls_stock')) {
+            $data['min_quantity'] = 0;
+        }
 
         if ($request->hasFile('photo')) {
             if ($rawMaterial->photo) {

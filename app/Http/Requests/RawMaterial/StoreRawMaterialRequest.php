@@ -16,12 +16,13 @@ class StoreRawMaterialRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code'          => ['nullable', 'string', 'max:50'],
-            'name'          => ['required', 'string', 'max:150'],
-            'unit'          => ['required', Rule::in(RawMaterial::UNITS)],
-            'current_price' => ['required', 'numeric', 'min:0'],
-            'min_quantity'  => ['required', 'numeric', 'min:0'],
-            'photo'         => ['nullable', 'image', 'max:2048'],
+            'code'           => ['nullable', 'string', 'max:50'],
+            'name'           => ['required', 'string', 'max:150'],
+            'unit'           => ['required', Rule::in(RawMaterial::UNITS)],
+            'controls_stock' => ['required', 'boolean'],
+            'current_price'  => ['required', 'numeric', 'min:0'],
+            'min_quantity'   => [Rule::requiredIf(fn () => $this->boolean('controls_stock')), 'nullable', 'numeric', 'min:0'],
+            'photo'          => ['nullable', 'image', 'max:2048'],
         ];
     }
 

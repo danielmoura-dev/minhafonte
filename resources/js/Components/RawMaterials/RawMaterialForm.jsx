@@ -135,19 +135,38 @@ export default function RawMaterialForm({ data, setData, errors, processing, onS
                         </Field>
                     )}
 
-                    <Field label="Quantidade mínima (alerta de reposição)" error={errors.min_quantity} required>
+                    {/* Sem controle de estoque */}
+                    <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer select-none p-3 bg-gray-50 rounded-lg">
                         <input
-                            type="text"
-                            inputMode="decimal"
-                            value={data.min_quantity}
-                            onChange={e => setData('min_quantity', e.target.value.replace(',', '.'))}
-                            placeholder="Ex: 10"
-                            className={inputClass}
+                            type="checkbox"
+                            checked={!data.controls_stock}
+                            onChange={e => setData('controls_stock', !e.target.checked)}
+                            className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
-                        <p className="text-xs text-gray-400 mt-1">
-                            Quando o estoque ficar igual ou abaixo deste valor, um alerta será exibido.
-                        </p>
-                    </Field>
+                        <span>
+                            Esta matéria-prima <strong>não tem estoque</strong>
+                            <span className="block text-xs text-gray-400 mt-0.5">
+                                Remove a quantidade mínima e o controle de estoque. Ideal para itens que você
+                                não compra/estoca, mas têm custo por unidade (ex: selos impressos pela máquina).
+                            </span>
+                        </span>
+                    </label>
+
+                    {data.controls_stock && (
+                        <Field label="Quantidade mínima (alerta de reposição)" error={errors.min_quantity} required>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={data.min_quantity}
+                                onChange={e => setData('min_quantity', e.target.value.replace(',', '.'))}
+                                placeholder="Ex: 10"
+                                className={inputClass}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                                Quando o estoque ficar igual ou abaixo deste valor, um alerta será exibido.
+                            </p>
+                        </Field>
+                    )}
                 </div>
             </div>
 

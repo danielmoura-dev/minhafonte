@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Search, Pencil, Trash2, Package, PowerOff, Power, BarChart2, ShoppingCart, TrendingUp, Banknote } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
+import ImageThumb from '@/Components/UI/ImageThumb';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', {
@@ -301,7 +302,7 @@ export default function ProductsIndex({ products, filters, productIndicators, gr
                                             <td className="px-5 py-3.5">
                                                 <div className="flex items-center gap-3">
                                                     {product.photo ? (
-                                                        <img
+                                                        <ImageThumb
                                                             src={`/storage/${product.photo}`}
                                                             alt={product.name}
                                                             className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0"

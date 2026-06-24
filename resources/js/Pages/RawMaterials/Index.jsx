@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
+import ImageThumb from '@/Components/UI/ImageThumb';
 import { unitLabel, unitAbbr, formatQuantity } from '@/utils/rawMaterialUnits';
 
 function formatCurrency(value) {
@@ -213,7 +214,7 @@ export default function RawMaterialsIndex({ materials, filters, restockCount }) 
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
                                             {m.photo ? (
-                                                <img src={`/storage/${m.photo}`} alt={m.name} className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0" />
+                                                <ImageThumb src={`/storage/${m.photo}`} alt={m.name} className="w-9 h-9 rounded-lg object-cover border border-gray-100 shrink-0" />
                                             ) : (
                                                 <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                                                     <FlaskConical size={16} className="text-gray-400" strokeWidth={1.75} />
@@ -227,16 +228,24 @@ export default function RawMaterialsIndex({ materials, filters, restockCount }) 
                                     </td>
                                     <td className="px-5 py-3.5 text-gray-500">{unitLabel(m.unit)}</td>
                                     <td className="px-5 py-3.5 text-right">
-                                        <div className="inline-flex items-center gap-1.5 justify-end">
-                                            {m.active && m.needs_restock && (
-                                                <AlertTriangle size={14} className="text-amber-500 shrink-0" strokeWidth={2.25} />
-                                            )}
-                                            <span className={`font-medium ${m.active && m.needs_restock ? 'text-amber-600' : 'text-gray-700'}`}>
-                                                {formatQuantity(m.current_stock)} {unitAbbr(m.unit)}
-                                            </span>
-                                        </div>
+                                        {m.controls_stock ? (
+                                            <div className="inline-flex items-center gap-1.5 justify-end">
+                                                {m.active && m.needs_restock && (
+                                                    <AlertTriangle size={14} className="text-amber-500 shrink-0" strokeWidth={2.25} />
+                                                )}
+                                                <span className={`font-medium ${m.active && m.needs_restock ? 'text-amber-600' : 'text-gray-700'}`}>
+                                                    {formatQuantity(m.current_stock)} {unitAbbr(m.unit)}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">Sem estoque</span>
+                                        )}
                                     </td>
-                                    <td className="px-5 py-3.5 text-right text-gray-500">{formatQuantity(m.min_quantity)} {unitAbbr(m.unit)}</td>
+                                    <td className="px-5 py-3.5 text-right text-gray-500">
+                                        {m.controls_stock
+                                            ? `${formatQuantity(m.min_quantity)} ${unitAbbr(m.unit)}`
+                                            : <span className="text-gray-300">—</span>}
+                                    </td>
                                     <td className="px-5 py-3.5 text-right font-medium text-gray-900">{formatCurrency(m.current_price)}</td>
                                     <td className="px-5 py-3.5">
                                         {m.active ? (
@@ -251,7 +260,7 @@ export default function RawMaterialsIndex({ materials, filters, restockCount }) 
                                     </td>
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center justify-end gap-0.5">
-                                            {m.active && (
+                                            {m.active && m.controls_stock && (
                                                 <IconBtn href={route('raw-materials.movements.create', { material: m.id })} title="Ajustar estoque" color="hover:text-primary-600 hover:bg-primary-50">
                                                     <ArrowDownUp size={16} strokeWidth={1.75} />
                                                 </IconBtn>

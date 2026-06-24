@@ -5,6 +5,7 @@ import { Plus, Search, Eye, Pencil, Trash2, Users, PowerOff, Power, AlertTriangl
 import Badge from '@/Components/UI/Badge';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
+import ImageThumb from '@/Components/UI/ImageThumb';
 
 export default function SellersIndex({ sellers, filters }) {
     const { flash } = usePage().props;
@@ -140,7 +141,7 @@ export default function SellersIndex({ sellers, filters }) {
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
                                             {seller.photo ? (
-                                                <img
+                                                <ImageThumb
                                                     src={`/storage/${seller.photo}`}
                                                     alt={seller.name}
                                                     className="w-8 h-8 rounded-full object-cover shrink-0"
