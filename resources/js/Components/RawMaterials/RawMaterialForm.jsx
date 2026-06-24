@@ -78,7 +78,7 @@ export default function RawMaterialForm({ data, setData, errors, processing, onS
                             type="text"
                             value={data.name}
                             onChange={e => setData('name', e.target.value)}
-                            placeholder="Ex: Açúcar refinado"
+                            placeholder="Ex: Tampa de garrafão"
                             className={inputClass}
                         />
                     </Field>

@@ -95,7 +95,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
         <AppLayout title="Ajustar estoque">
 
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-6 max-w-2xl mx-auto">
                 <Link href={route('raw-materials.index')} className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
                     <ArrowLeft size={16} strokeWidth={1.75} />
                 </Link>
@@ -105,7 +105,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
                 </div>
             </div>
 
-            <div className="max-w-2xl flex flex-col gap-6">
+            <div className="max-w-2xl mx-auto flex flex-col gap-6">
 
                 {/* Seleção da matéria-prima */}
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
