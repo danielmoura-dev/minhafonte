@@ -79,6 +79,14 @@ Route::middleware('auth')->group(function () {
     Route::get('vendedores/{seller}/relatorio', [SellerController::class, 'report'])
         ->name('sellers.report');
 
+    // Produtos — movimentação de estoque (rotas estáticas antes do resource)
+    Route::get('produtos/movimentacao/nova', [\App\Http\Controllers\Product\ProductMovementController::class, 'create'])
+        ->name('products.movements.create');
+    Route::post('produtos/movimentacao', [\App\Http\Controllers\Product\ProductMovementController::class, 'store'])
+        ->name('products.movements.store');
+    Route::get('produtos/movimentacao/historico', [\App\Http\Controllers\Product\ProductMovementController::class, 'history'])
+        ->name('products.movements.history');
+
     // Produtos
     Route::resource('produtos', ProductController::class)->parameters([
         'produtos' => 'product',
@@ -92,6 +100,14 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::patch('produtos/{product}/toggle-status', [ProductController::class, 'toggleStatus'])
         ->name('products.toggle-status');
+    Route::patch('produtos/{product}/preco', [ProductController::class, 'updatePrice'])
+        ->name('products.update-price');
+    Route::get('produtos/{product}/historico-precos', [ProductController::class, 'priceHistory'])
+        ->name('products.price-history');
+    Route::get('produtos/{product}/receita', [\App\Http\Controllers\Product\ProductRecipeController::class, 'edit'])
+        ->name('products.recipe.edit');
+    Route::put('produtos/{product}/receita', [\App\Http\Controllers\Product\ProductRecipeController::class, 'update'])
+        ->name('products.recipe.update');
 
     // Fornecedores
     Route::resource('fornecedores', SupplierController::class)->parameters([

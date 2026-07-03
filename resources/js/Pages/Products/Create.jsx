@@ -4,11 +4,13 @@ import ProductForm from '@/Components/Products/ProductForm';
 
 export default function ProductCreate() {
     const { data, setData, post, processing, errors } = useForm({
-        code:          '',
-        name:          '',
-        default_price: '',
-        description:   '',
-        photo:         null,
+        code:           '',
+        name:           '',
+        default_price:  '',
+        controls_stock: true,
+        min_quantity:   '',
+        description:    '',
+        photo:          null,
     });
 
     function handleSubmit(e) {

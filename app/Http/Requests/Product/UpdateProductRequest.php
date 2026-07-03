@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Product;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -11,26 +12,30 @@ class UpdateProductRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Edição NÃO altera preço (feito pela tela "Alterar Preço").
+     */
     public function rules(): array
     {
         return [
-            'code'          => ['nullable', 'string', 'max:50'],
-            'name'          => ['required', 'string', 'max:150'],
-            'default_price' => ['required', 'numeric', 'min:0'],
-            'description'   => ['nullable', 'string', 'max:1000'],
-            'photo'         => ['nullable', 'image', 'max:2048'],
+            'code'           => ['nullable', 'string', 'max:50'],
+            'name'           => ['required', 'string', 'max:150'],
+            'controls_stock' => ['required', 'boolean'],
+            'min_quantity'   => [Rule::requiredIf(fn () => $this->boolean('controls_stock')), 'nullable', 'numeric', 'min:0'],
+            'description'    => ['nullable', 'string', 'max:1000'],
+            'photo'          => ['nullable', 'image', 'max:2048'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required'          => 'O nome do produto é obrigatório.',
-            'default_price.required' => 'O valor padrão é obrigatório.',
-            'default_price.numeric'  => 'O valor padrão deve ser um número.',
-            'default_price.min'      => 'O valor padrão não pode ser negativo.',
-            'photo.image'            => 'O arquivo deve ser uma imagem.',
-            'photo.max'              => 'A imagem deve ter no máximo 2MB.',
+            'name.required'         => 'O nome do produto é obrigatório.',
+            'min_quantity.required' => 'A quantidade mínima é obrigatória.',
+            'min_quantity.numeric'  => 'A quantidade mínima deve ser um número.',
+            'min_quantity.min'      => 'A quantidade mínima não pode ser negativa.',
+            'photo.image'           => 'O arquivo deve ser uma imagem.',
+            'photo.max'             => 'A imagem deve ter no máximo 2MB.',
         ];
     }
 }

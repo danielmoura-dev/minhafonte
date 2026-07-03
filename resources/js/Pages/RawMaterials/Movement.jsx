@@ -3,6 +3,7 @@ import { Link, useForm } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, FlaskConical, X, AlertTriangle } from 'lucide-react';
 import { unitLabel, unitAbbr, formatQuantity, MOVEMENT_REASONS, reasonLabel } from '@/utils/rawMaterialUnits';
+import { formatQuantityInput, parseQuantityToDB } from '@/utils/numberInput';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
@@ -39,6 +40,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
     });
 
     const [priceDisplay, setPriceDisplay] = useState('');
+    const [qtyDisplay, setQtyDisplay] = useState('');
     const [showSummary, setShowSummary] = useState(false);
 
     const material = useMemo(
@@ -76,6 +78,12 @@ export default function Movement({ materials, suppliers, preselectedId }) {
         const f = formatPriceInput(e.target.value);
         setPriceDisplay(f);
         setData('unit_price', parsePriceToDB(f));
+    }
+
+    function handleQuantity(e) {
+        const f = formatQuantityInput(e.target.value);
+        setQtyDisplay(f);
+        setData('quantity', parseQuantityToDB(f));
     }
 
     const canReview =
@@ -216,8 +224,8 @@ export default function Movement({ materials, suppliers, preselectedId }) {
                                     <span className="text-gray-400 font-normal"> (em {unitLabel(material.unit).toLowerCase()})</span>
                                 </label>
                                 <input
-                                    type="text" inputMode="decimal" value={data.quantity}
-                                    onChange={e => setData('quantity', e.target.value.replace(',', '.'))}
+                                    type="text" inputMode="decimal" value={qtyDisplay}
+                                    onChange={handleQuantity}
                                     placeholder="0" className={fieldClass}
                                 />
                                 {insufficient && (

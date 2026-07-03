@@ -138,24 +138,6 @@ export default function Sidebar() {
                     </NavGroup>
 
                     <NavGroup
-                        icon={Package}
-                        label="Produtos"
-                        open={openGroup === 'products'}
-                        onToggle={() => toggle('products')}
-                    >
-                        <SubNavItem
-                            href={route('products.create')}
-                            label="Cadastrar"
-                            active={url === '/produtos/criar'}
-                        />
-                        <SubNavItem
-                            href={route('products.index')}
-                            label="Gerenciar"
-                            active={url === '/produtos'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
                         icon={ShoppingCart}
                         label="Vendas"
                         open={openGroup === 'sales'}
@@ -206,6 +188,24 @@ export default function Sidebar() {
                             href={route('raw-materials.index')}
                             label="Gerenciar"
                             active={url === '/materia-prima'}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={Package}
+                        label="Produtos"
+                        open={openGroup === 'products'}
+                        onToggle={() => toggle('products')}
+                    >
+                        <SubNavItem
+                            href={route('products.create')}
+                            label="Cadastrar"
+                            active={url === '/produtos/criar'}
+                        />
+                        <SubNavItem
+                            href={route('products.index')}
+                            label="Gerenciar"
+                            active={url === '/produtos'}
                         />
                     </NavGroup>
                 </div>

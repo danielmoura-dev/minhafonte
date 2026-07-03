@@ -20,10 +20,12 @@ class ProductController extends Controller
         $this->authorize('viewAny', Product::class);
 
         $products = Product::fromCompany(Auth::id())
-            ->withCount('sales')
+            ->withCount('sales', 'movements', 'recipeItems')
             ->when($request->search, fn ($q, $s) =>
-                $q->where('name', 'like', "%{$s}%")
-                  ->orWhere('code', 'like', "%{$s}%")
+                $q->where(fn ($w) =>
+                    $w->where('name', 'like', "%{$s}%")
+                      ->orWhere('code', 'like', "%{$s}%")
+                )
             )
             ->when($request->filled('status'), fn ($q) =>
                 $q->where('active', $request->status === 'active')
@@ -31,6 +33,13 @@ class ProductController extends Controller
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
+
+        // Quantos produtos (no total) estão abaixo do mínimo
+        $restockCount = Product::fromCompany(Auth::id())
+            ->where('active', true)
+            ->where('controls_stock', true)
+            ->whereColumn('current_stock', '<=', 'min_quantity')
+            ->count();
 
         $allProducts = Product::fromCompany(Auth::id())
             ->withCount('sales')
@@ -61,6 +70,7 @@ class ProductController extends Controller
         return Inertia::render('Products/Index', [
             'products'          => $products,
             'filters'           => $request->only('search', 'status'),
+            'restockCount'      => $restockCount,
             'productIndicators' => $productIndicators,
             'grandTotal'        => $grandTotal,
         ]);
@@ -78,13 +88,29 @@ class ProductController extends Controller
         $this->authorize('create', Product::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id']    = Auth::id();
+        $data['current_stock'] = 0;
+
+        // Sem controle de estoque: quantidade mínima não se aplica
+        if (! $request->boolean('controls_stock')) {
+            $data['min_quantity'] = 0;
+        }
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')->store('products/photos', 'public');
         }
 
-        Product::create($data);
+        $product = Product::create($data);
+
+        // Primeiro registro no histórico de preços (preço de cadastro)
+        $product->priceHistories()->create([
+            'old_price'          => null,
+            'new_price'          => $product->default_price,
+            'difference'         => $product->default_price,
+            'difference_percent' => null,
+            'reason'             => 'Cadastro inicial',
+            'actor_name'         => $this->actorName(),
+        ]);
 
         return redirect()
             ->route('products.index')
@@ -107,6 +133,10 @@ class ProductController extends Controller
         $data = $request->validated();
         unset($data['photo']);
 
+        if (! $request->boolean('controls_stock')) {
+            $data['min_quantity'] = 0;
+        }
+
         if ($request->hasFile('photo')) {
             if ($product->photo) {
                 Storage::disk('public')->delete($product->photo);
@@ -125,10 +155,13 @@ class ProductController extends Controller
     {
         $this->authorize('delete', $product);
 
-        if ($product->sales()->exists()) {
+        // Se possui vendas ou movimentações, apenas inativa
+        if ($product->sales()->exists() || $product->movements()->exists()) {
+            $product->update(['active' => false]);
+
             return redirect()
                 ->route('products.index')
-                ->with('error', "O produto \"{$product->name}\" possui vendas registradas e não pode ser excluído. Use a opção de inativar.");
+                ->with('success', "\"{$product->name}\" possui histórico e foi inativado.");
         }
 
         if ($product->photo) {
@@ -151,5 +184,58 @@ class ProductController extends Controller
         $status = $product->active ? 'ativado' : 'inativado';
 
         return back()->with('success', "Produto {$status} com sucesso!");
+    }
+
+    public function updatePrice(Request $request, Product $product): RedirectResponse
+    {
+        $this->authorize('update', $product);
+
+        $data = $request->validate([
+            'new_price' => ['required', 'numeric', 'min:0'],
+            'reason'    => ['nullable', 'string', 'max:255'],
+        ], [
+            'new_price.required' => 'O novo preço é obrigatório.',
+            'new_price.numeric'  => 'O preço deve ser um número.',
+            'new_price.min'      => 'O preço não pode ser negativo.',
+        ]);
+
+        $old  = (float) $product->default_price;
+        $new  = (float) $data['new_price'];
+        $diff = round($new - $old, 2);
+        $pct  = $old > 0 ? round(($diff / $old) * 100, 2) : null;
+
+        $product->priceHistories()->create([
+            'old_price'          => $old,
+            'new_price'          => $new,
+            'difference'         => $diff,
+            'difference_percent' => $pct,
+            'reason'             => $data['reason'] ?? null,
+            'actor_name'         => $this->actorName(),
+        ]);
+
+        $product->update(['default_price' => $new]);
+
+        return back()->with('success', 'Preço atualizado com sucesso!');
+    }
+
+    public function priceHistory(Product $product): Response
+    {
+        $this->authorize('view', $product);
+
+        $histories = $product->priceHistories()
+            ->orderByDesc('id')
+            ->get();
+
+        return Inertia::render('Products/PriceHistory', [
+            'product'   => $product,
+            'histories' => $histories,
+        ]);
+    }
+
+    private function actorName(): ?string
+    {
+        $company = Auth::user();
+
+        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

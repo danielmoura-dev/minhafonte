@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Package, X } from 'lucide-react';
 import { compressImage } from '@/utils/compressImage';
+import { formatQuantityInput, parseQuantityToDB, quantityToDisplay } from '@/utils/numberInput';
 
 function Field({ label, error, required, children }) {
     return (
@@ -14,14 +15,7 @@ function Field({ label, error, required, children }) {
     );
 }
 
-function Input({ ...props }) {
-    return (
-        <input
-            {...props}
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-        />
-    );
-}
+const inputClass = "w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition";
 
 function formatPrice(value) {
     const digits = value.replace(/\D/g, '');
@@ -34,17 +28,24 @@ function parsePriceToDB(formatted) {
     return formatted.replace(/\./g, '').replace(',', '.');
 }
 
-export default function ProductForm({ data, setData, errors, processing, onSubmit, submitLabel, existingPhoto }) {
-    const [noCode, setNoCode]         = useState(!data.code && data.code !== undefined);
+export default function ProductForm({ data, setData, errors, processing, onSubmit, submitLabel, existingPhoto, isEdit = false }) {
+    const [noCode, setNoCode] = useState(!data.code && !isEdit);
     const [priceDisplay, setPriceDisplay] = useState(
         data.default_price
             ? parseFloat(data.default_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
             : ''
     );
+    const [minQtyDisplay, setMinQtyDisplay] = useState(quantityToDisplay(data.min_quantity));
     const [photoPreview, setPhotoPreview] = useState(
         existingPhoto ? `/storage/${existingPhoto}` : null
     );
     const fileInputRef = useRef(null);
+
+    function handleMinQtyChange(e) {
+        const formatted = formatQuantityInput(e.target.value);
+        setMinQtyDisplay(formatted);
+        setData('min_quantity', parseQuantityToDB(formatted));
+    }
 
     function handlePriceChange(e) {
         const formatted = formatPrice(e.target.value);
@@ -80,23 +81,24 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
                 <div className="flex flex-col gap-4">
 
                     <Field label="Nome do produto" error={errors.name} required>
-                        <Input
+                        <input
                             type="text"
                             value={data.name}
                             onChange={e => setData('name', e.target.value)}
-                            placeholder="Fardo 500ml"
+                            placeholder="Ex: Garrafinha 500ml"
+                            className={inputClass}
                         />
                     </Field>
 
                     <Field label="Código" error={errors.code}>
                         <div className="flex flex-col gap-2">
-                            <Input
+                            <input
                                 type="text"
                                 value={data.code}
                                 onChange={e => setData('code', e.target.value)}
-                                placeholder="Ex: FARDO-500"
+                                placeholder="Ex: PROD-500"
                                 disabled={noCode}
-                                className={noCode ? 'opacity-40 cursor-not-allowed' : ''}
+                                className={`${inputClass} ${noCode ? 'opacity-40 cursor-not-allowed' : ''}`}
                             />
                             <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
                                 <input
@@ -110,20 +112,22 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
                         </div>
                     </Field>
 
-                    <Field label="Valor padrão" error={errors.default_price} required>
-                        <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
-                                R$
-                            </span>
-                            <input
-                                type="text"
-                                value={priceDisplay}
-                                onChange={handlePriceChange}
-                                placeholder="0,00"
-                                className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                            />
-                        </div>
-                    </Field>
+                    {!isEdit && (
+                        <Field label="Preço de venda" error={errors.default_price} required>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                                    R$
+                                </span>
+                                <input
+                                    type="text"
+                                    value={priceDisplay}
+                                    onChange={handlePriceChange}
+                                    placeholder="0,00"
+                                    className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+                                />
+                            </div>
+                        </Field>
+                    )}
 
                     <Field label="Descrição" error={errors.description}>
                         <textarea
@@ -134,6 +138,39 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
                             className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition resize-none"
                         />
                     </Field>
+
+                    {/* Sem controle de estoque */}
+                    <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer select-none p-3 bg-gray-50 rounded-lg">
+                        <input
+                            type="checkbox"
+                            checked={!data.controls_stock}
+                            onChange={e => setData('controls_stock', !e.target.checked)}
+                            className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span>
+                            Este produto <strong>não controla estoque</strong>
+                            <span className="block text-xs text-gray-400 mt-0.5">
+                                Remove a quantidade mínima e o controle de estoque. Ideal para produtos
+                                sob encomenda ou que você não estoca.
+                            </span>
+                        </span>
+                    </label>
+
+                    {data.controls_stock && (
+                        <Field label="Quantidade mínima (alerta de reposição)" error={errors.min_quantity} required>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={minQtyDisplay}
+                                onChange={handleMinQtyChange}
+                                placeholder="Ex: 10.000"
+                                className={inputClass}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                                Quando o estoque ficar igual ou abaixo deste valor, um alerta será exibido.
+                            </p>
+                        </Field>
+                    )}
                 </div>
             </div>
 

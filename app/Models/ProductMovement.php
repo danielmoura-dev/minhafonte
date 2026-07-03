@@ -3,16 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\ProductMovement;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class RawMaterialMovement extends Model
+class ProductMovement extends Model
 {
     protected $fillable = [
         'company_id',
-        'raw_material_id',
+        'product_id',
         'supplier_id',
-        'product_movement_id',
         'type',
         'reason',
         'quantity',
@@ -40,19 +38,14 @@ class RawMaterialMovement extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function rawMaterial(): BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(RawMaterial::class);
+        return $this->belongsTo(Product::class);
     }
 
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
-    }
-
-    public function productMovement(): BelongsTo
-    {
-        return $this->belongsTo(ProductMovement::class);
     }
 
     public function scopeFromCompany($query, int $companyId)

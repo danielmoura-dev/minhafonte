@@ -4,12 +4,13 @@ import ProductForm from '@/Components/Products/ProductForm';
 
 export default function ProductEdit({ product }) {
     const { data, setData, post, processing, errors } = useForm({
-        _method:       'PUT',
-        code:          product.code ?? '',
-        name:          product.name,
-        default_price: product.default_price,
-        description:   product.description ?? '',
-        photo:         null,
+        _method:        'PUT',
+        code:           product.code ?? '',
+        name:           product.name,
+        controls_stock: product.controls_stock ?? true,
+        min_quantity:   product.min_quantity ?? '',
+        description:    product.description ?? '',
+        photo:          null,
     });
 
     function handleSubmit(e) {
@@ -32,6 +33,7 @@ export default function ProductEdit({ product }) {
                 onSubmit={handleSubmit}
                 submitLabel="Salvar alterações"
                 existingPhoto={product.photo}
+                isEdit
             />
         </AppLayout>
     );

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { FlaskConical, X } from 'lucide-react';
 import { compressImage } from '@/utils/compressImage';
 import { UNIT_LABELS, priceLabel } from '@/utils/rawMaterialUnits';
+import { formatQuantityInput, parseQuantityToDB, quantityToDisplay } from '@/utils/numberInput';
 
 function Field({ label, error, required, children }) {
     return (
@@ -35,10 +36,17 @@ export default function RawMaterialForm({ data, setData, errors, processing, onS
             ? parseFloat(data.current_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
             : ''
     );
+    const [minQtyDisplay, setMinQtyDisplay] = useState(quantityToDisplay(data.min_quantity));
     const [photoPreview, setPhotoPreview] = useState(existingPhoto ? `/storage/${existingPhoto}` : null);
     const fileInputRef = useRef(null);
 
     const unitOptions = units ?? Object.keys(UNIT_LABELS);
+
+    function handleMinQtyChange(e) {
+        const formatted = formatQuantityInput(e.target.value);
+        setMinQtyDisplay(formatted);
+        setData('min_quantity', parseQuantityToDB(formatted));
+    }
 
     function handlePriceChange(e) {
         const formatted = formatPrice(e.target.value);
@@ -157,8 +165,8 @@ export default function RawMaterialForm({ data, setData, errors, processing, onS
                             <input
                                 type="text"
                                 inputMode="decimal"
-                                value={data.min_quantity}
-                                onChange={e => setData('min_quantity', e.target.value.replace(',', '.'))}
+                                value={minQtyDisplay}
+                                onChange={handleMinQtyChange}
                                 placeholder="Ex: 10"
                                 className={inputClass}
                             />
