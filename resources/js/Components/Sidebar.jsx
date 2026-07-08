@@ -6,6 +6,9 @@ import {
     ShoppingCart,
     FlaskConical,
     Truck,
+    Contact,
+    Receipt,
+    Settings,
     ChevronDown,
     LogOut,
 } from 'lucide-react';
@@ -71,9 +74,12 @@ function SubNavItem({ href, label, active }) {
 }
 
 function resolveOpenGroup(url) {
+    if (url.startsWith('/pedidos') || url.startsWith('/recebimentos')) return 'orders';
+    if (url.startsWith('/clientes'))     return 'customers';
+    if (url.startsWith('/configuracoes')) return 'settings';
     if (url.startsWith('/vendedores'))   return 'sellers';
     if (url.startsWith('/produtos'))     return 'products';
-    if (url.startsWith('/vendas'))       return 'sales';
+    if (url.startsWith('/vendas'))       return 'commissions';
     if (url.startsWith('/fornecedores')) return 'suppliers';
     if (url.startsWith('/materia-prima')) return 'rawMaterials';
     return null;
@@ -140,8 +146,49 @@ export default function Sidebar() {
                     <NavGroup
                         icon={ShoppingCart}
                         label="Vendas"
-                        open={openGroup === 'sales'}
-                        onToggle={() => toggle('sales')}
+                        open={openGroup === 'orders'}
+                        onToggle={() => toggle('orders')}
+                    >
+                        <SubNavItem
+                            href={route('orders.create')}
+                            label="Registrar Venda"
+                            active={url === '/pedidos/create'}
+                        />
+                        <SubNavItem
+                            href={route('orders.index')}
+                            label="Gerenciar"
+                            active={url === '/pedidos'}
+                        />
+                        <SubNavItem
+                            href={route('receivables.index')}
+                            label="Recebimentos"
+                            active={url.startsWith('/recebimentos')}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={Contact}
+                        label="Clientes"
+                        open={openGroup === 'customers'}
+                        onToggle={() => toggle('customers')}
+                    >
+                        <SubNavItem
+                            href={route('customers.create')}
+                            label="Cadastrar"
+                            active={url === '/clientes/create'}
+                        />
+                        <SubNavItem
+                            href={route('customers.index')}
+                            label="Gerenciar"
+                            active={url === '/clientes'}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={Receipt}
+                        label="Vendas (Comissão)"
+                        open={openGroup === 'commissions'}
+                        onToggle={() => toggle('commissions')}
                     >
                         <SubNavItem
                             href={route('sales.create')}
@@ -206,6 +253,24 @@ export default function Sidebar() {
                             href={route('products.index')}
                             label="Gerenciar"
                             active={url === '/produtos'}
+                        />
+                    </NavGroup>
+
+                    <NavGroup
+                        icon={Settings}
+                        label="Configurações"
+                        open={openGroup === 'settings'}
+                        onToggle={() => toggle('settings')}
+                    >
+                        <SubNavItem
+                            href={route('company.settings.edit')}
+                            label="Dados da Empresa"
+                            active={url.startsWith('/configuracoes/empresa')}
+                        />
+                        <SubNavItem
+                            href={route('bank-accounts.index')}
+                            label="Contas Bancárias"
+                            active={url.startsWith('/configuracoes/contas')}
                         />
                     </NavGroup>
                 </div>

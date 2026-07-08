@@ -2,9 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\BankAccount;
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Seller;
+use App\Policies\BankAccountPolicy;
+use App\Policies\CustomerPolicy;
+use App\Policies\OrderPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\SalePolicy;
 use App\Policies\SellerPolicy;
@@ -23,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Seller::class, SellerPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Sale::class, SalePolicy::class);
+        Gate::policy(Customer::class, CustomerPolicy::class);
+        Gate::policy(Order::class, OrderPolicy::class);
+        Gate::policy(BankAccount::class, BankAccountPolicy::class);
 
         $this->configureEmails();
     }

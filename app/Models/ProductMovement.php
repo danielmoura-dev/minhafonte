@@ -11,6 +11,7 @@ class ProductMovement extends Model
         'company_id',
         'product_id',
         'supplier_id',
+        'order_id',
         'type',
         'reason',
         'quantity',
@@ -46,6 +47,11 @@ class ProductMovement extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function scopeFromCompany($query, int $companyId)

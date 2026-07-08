@@ -6,9 +6,14 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Order\OrderController;
+use App\Http\Controllers\Order\ReceivableController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\RawMaterial\RawMaterialController;
 use App\Http\Controllers\Sale\SaleController;
+use App\Http\Controllers\Settings\BankAccountController;
+use App\Http\Controllers\Settings\CompanySettingsController;
 use App\Http\Controllers\Supplier\SupplierController;
 use App\Http\Controllers\Seller\SellerAuthController;
 use App\Http\Controllers\Seller\SellerController;
@@ -135,6 +140,59 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'sales.destroy',
     ]);
     Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
+
+    // Clientes
+    Route::resource('clientes', CustomerController::class)->parameters([
+        'clientes' => 'customer',
+    ])->names([
+        'index'   => 'customers.index',
+        'create'  => 'customers.create',
+        'store'   => 'customers.store',
+        'edit'    => 'customers.edit',
+        'update'  => 'customers.update',
+        'destroy' => 'customers.destroy',
+    ])->except('show');
+    Route::patch('clientes/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])
+        ->name('customers.toggle-status');
+
+    // Vendas (novo módulo de pedidos — rotas estáticas antes do resource)
+    Route::get('pedidos/{order}/romaneio', [OrderController::class, 'romaneio'])
+        ->name('orders.romaneio');
+    Route::resource('pedidos', OrderController::class)->parameters([
+        'pedidos' => 'order',
+    ])->names([
+        'index'   => 'orders.index',
+        'create'  => 'orders.create',
+        'store'   => 'orders.store',
+        'show'    => 'orders.show',
+        'edit'    => 'orders.edit',
+        'update'  => 'orders.update',
+        'destroy' => 'orders.destroy',
+    ]);
+
+    // Recebimentos
+    Route::get('recebimentos', [ReceivableController::class, 'index'])->name('receivables.index');
+    Route::get('recebimentos/{order}', [ReceivableController::class, 'show'])->name('receivables.show');
+    Route::post('recebimentos/{order}/pagamento', [ReceivableController::class, 'storePayment'])
+        ->name('receivables.payments.store');
+
+    // Configurações — Dados da Empresa
+    Route::get('configuracoes/empresa', [CompanySettingsController::class, 'edit'])
+        ->name('company.settings.edit');
+    Route::put('configuracoes/empresa', [CompanySettingsController::class, 'update'])
+        ->name('company.settings.update');
+
+    // Configurações — Contas Bancárias
+    Route::resource('configuracoes/contas', BankAccountController::class)->parameters([
+        'contas' => 'bankAccount',
+    ])->names([
+        'index'   => 'bank-accounts.index',
+        'store'   => 'bank-accounts.store',
+        'update'  => 'bank-accounts.update',
+        'destroy' => 'bank-accounts.destroy',
+    ])->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('configuracoes/contas/{bankAccount}/toggle-status', [BankAccountController::class, 'toggleStatus'])
+        ->name('bank-accounts.toggle-status');
 
     // Matéria-Prima — movimentação de estoque (rotas estáticas antes do resource)
     Route::get('materia-prima/movimentacao/nova', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'create'])
