@@ -26,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.seller'  => AuthenticateSeller::class,
             'guest.seller' => RedirectIfSellerAuthenticated::class,
         ]);
+
+        // Webhook da Evolution API é autenticado por token, não por sessão
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/evolution',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

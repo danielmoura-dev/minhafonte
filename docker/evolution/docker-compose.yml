@@ -1,0 +1,67 @@
+# Evolution API — conexão WhatsApp do bot (via QR code / Baileys)
+#
+# Uso (local ou VPS):
+#   1. Copie .env.example para .env nesta pasta e defina uma AUTHENTICATION_API_KEY forte
+#   2. docker compose up -d
+#   3. A API sobe em http://localhost:8080 (na VPS, não exponha a porta publicamente
+#      sem firewall — apenas o Laravel precisa acessá-la)
+#
+# A mesma AUTHENTICATION_API_KEY deve ir no .env do Laravel como EVOLUTION_API_KEY.
+
+services:
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=${SERVER_URL:-http://localhost:8080}
+      - AUTHENTICATION_API_KEY=${AUTHENTICATION_API_KEY}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@evolution-postgres:5432/evolution?schema=public
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
+      - DATABASE_SAVE_MESSAGE_UPDATE=false
+      - DATABASE_SAVE_DATA_CONTACTS=false
+      - DATABASE_SAVE_DATA_CHATS=false
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://evolution-redis:6379/6
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_LOCAL_ENABLED=false
+      - LOG_LEVEL=ERROR,WARN
+      - DEL_INSTANCE=false
+      - QRCODE_LIMIT=30
+    volumes:
+      - evolution_instances:/evolution/instances
+    extra_hosts:
+      # Permite o container enxergar o Laravel local do Laragon (dev).
+      # Em produção (domínio público) esta linha é inofensiva.
+      - "fontepro.test:host-gateway"
+    depends_on:
+      - evolution-postgres
+      - evolution-redis
+
+  evolution-postgres:
+    image: postgres:16-alpine
+    container_name: evolution_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolution
+      - POSTGRES_DB=evolution
+    volumes:
+      - evolution_pgdata:/var/lib/postgresql/data
+
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: always
+    volumes:
+      - evolution_redis:/data
+
+volumes:
+  evolution_instances:
+  evolution_pgdata:
+  evolution_redis:

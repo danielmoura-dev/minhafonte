@@ -272,6 +272,11 @@ export default function Sidebar() {
                             label="Contas Bancárias"
                             active={url.startsWith('/configuracoes/contas')}
                         />
+                        <SubNavItem
+                            href={route('bot.edit')}
+                            label="Conectar Bot"
+                            active={url.startsWith('/configuracoes/bot')}
+                        />
                     </NavGroup>
                 </div>
             </nav>

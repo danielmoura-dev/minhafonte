@@ -182,6 +182,20 @@ Route::middleware('auth')->group(function () {
     Route::put('configuracoes/empresa', [CompanySettingsController::class, 'update'])
         ->name('company.settings.update');
 
+    // Configurações — Conectar Bot (WhatsApp)
+    Route::get('configuracoes/bot', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'edit'])
+        ->name('bot.edit');
+    Route::post('configuracoes/bot/conectar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'connect'])
+        ->name('bot.connect');
+    Route::get('configuracoes/bot/status', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'status'])
+        ->name('bot.status');
+    Route::post('configuracoes/bot/desconectar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'disconnect'])
+        ->name('bot.disconnect');
+    Route::post('configuracoes/bot/numeros', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'storeNumber'])
+        ->name('bot.numbers.store');
+    Route::delete('configuracoes/bot/numeros/{number}', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'destroyNumber'])
+        ->name('bot.numbers.destroy');
+
     // Configurações — Contas Bancárias
     Route::resource('configuracoes/contas', BankAccountController::class)->parameters([
         'contas' => 'bankAccount',
@@ -220,6 +234,12 @@ Route::middleware('auth')->group(function () {
     Route::get('materia-prima/{rawMaterial}/historico-precos', [RawMaterialController::class, 'priceHistory'])
         ->name('raw-materials.price-history');
 });
+
+// -----------------------------------------------
+// Webhooks (sem sessão; autenticados por token)
+// -----------------------------------------------
+Route::post('/webhooks/evolution', [\App\Http\Controllers\Webhook\EvolutionWebhookController::class, 'handle'])
+    ->name('webhooks.evolution');
 
 // -----------------------------------------------
 // Área do Vendedor

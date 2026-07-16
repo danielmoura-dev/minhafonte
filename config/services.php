@@ -41,4 +41,19 @@ return [
         'private_key' => env('VAPID_PRIVATE_KEY'),
     ],
 
+    'evolution' => [
+        'url'           => env('EVOLUTION_API_URL', 'http://localhost:8080'),
+        'api_key'       => env('EVOLUTION_API_KEY'),
+        'webhook_token' => env('EVOLUTION_WEBHOOK_TOKEN'),
+        // Base da URL do webhook vista PELO CONTAINER da Evolution.
+        // Local (Laragon): http://fontepro.test (https auto-assinado falharia).
+        // Produção: pode omitir — usa APP_URL.
+        'webhook_base'  => env('EVOLUTION_WEBHOOK_BASE'),
+    ],
+
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'model'   => env('GEMINI_MODEL', 'gemini-flash-latest'),
+    ],
+
 ];
