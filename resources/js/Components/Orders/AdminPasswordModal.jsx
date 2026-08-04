@@ -16,7 +16,12 @@ export default function AdminPasswordModal({ order, mode = 'edit', onCancel }) {
     function submit(e) {
         e.preventDefault();
         if (isDelete) {
-            destroy(route('orders.destroy', order.id), { preserveScroll: true });
+            destroy(route('orders.destroy', order.id), {
+                preserveScroll: true,
+                // Fecha o modal após excluir (a navegação volta ao mesmo componente
+                // Index, que preserva o estado — sem isso o modal ficaria aberto).
+                onSuccess: () => { reset(); onCancel(); },
+            });
         } else {
             post(route('orders.unlock-edit', order.id));
         }

@@ -37,7 +37,7 @@ export default function ReceivablesIndex({ orders, customers, filters }) {
         router.get(route('receivables.index'), {
             search, customer_id: customerId, date_from: dateFrom, date_to: dateTo,
             payment_status: status, ...overrides,
-        }, { preserveState: true, replace: true });
+        }, { preserveState: true, preserveScroll: true, replace: true });
     }
 
     return (

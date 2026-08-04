@@ -18,6 +18,7 @@ export default function SuppliersIndex({ suppliers, filters }) {
         e.preventDefault();
         router.get(route('suppliers.index'), { search, status }, {
             preserveState: true,
+            preserveScroll: true,
             replace:       true,
         });
     }
@@ -25,6 +26,7 @@ export default function SuppliersIndex({ suppliers, filters }) {
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('suppliers.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingDelete(false);
                 setDeleting(null);
@@ -35,6 +37,7 @@ export default function SuppliersIndex({ suppliers, filters }) {
     function handleToggle() {
         setLoadingToggle(true);
         router.patch(route('suppliers.toggle-status', toggling.id), {}, {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingToggle(false);
                 setToggling(null);

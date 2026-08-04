@@ -18,6 +18,7 @@ export default function CustomersIndex({ customers, filters }) {
         e.preventDefault();
         router.get(route('customers.index'), { search, status }, {
             preserveState: true,
+            preserveScroll: true,
             replace: true,
         });
     }
@@ -25,6 +26,7 @@ export default function CustomersIndex({ customers, filters }) {
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('customers.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => { setLoadingDelete(false); setDeleting(null); },
         });
     }
@@ -32,6 +34,7 @@ export default function CustomersIndex({ customers, filters }) {
     function handleToggle() {
         setLoadingToggle(true);
         router.patch(route('customers.toggle-status', toggling.id), {}, {
+            preserveScroll: true,
             onFinish: () => { setLoadingToggle(false); setToggling(null); },
         });
     }

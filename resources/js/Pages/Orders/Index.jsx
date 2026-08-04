@@ -46,12 +46,13 @@ export default function OrdersIndex({ orders, customers, filters }) {
         e.preventDefault();
         router.get(route('orders.index'), {
             customer_id: customerId, date_from: dateFrom, date_to: dateTo, payment_status: status,
-        }, { preserveState: true, replace: true });
+        }, { preserveState: true, preserveScroll: true, replace: true });
     }
 
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('orders.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => { setLoadingDelete(false); setDeleting(null); },
         });
     }

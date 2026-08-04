@@ -118,17 +118,19 @@ export default function RawMaterialsIndex({ materials, filters, restockCount }) 
 
     function handleSearch(e) {
         e.preventDefault();
-        router.get(route('raw-materials.index'), { search, status }, { preserveState: true, replace: true });
+        router.get(route('raw-materials.index'), { search, status }, { preserveState: true, preserveScroll: true, replace: true });
     }
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('raw-materials.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => { setLoadingDelete(false); setDeleting(null); },
         });
     }
     function handleToggle() {
         setLoadingToggle(true);
         router.patch(route('raw-materials.toggle-status', toggling.id), {}, {
+            preserveScroll: true,
             onFinish: () => { setLoadingToggle(false); setToggling(null); },
         });
     }

@@ -104,8 +104,8 @@ export default function AppLayout({ title, children, requireVerified = true }) {
             <MobileBlocker />
             <div className="flex min-h-screen bg-gray-50">
 
-                {/* Sidebar sempre clicável, acima do overlay */}
-                <div className="relative z-50">
+                {/* Sidebar fixa: permanece visível mesmo ao rolar a lista */}
+                <div className="z-50 sticky top-0 h-screen self-start shrink-0">
                     <Sidebar />
                 </div>
 

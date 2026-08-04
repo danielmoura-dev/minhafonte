@@ -12,6 +12,8 @@ export default function Pagination({ links }) {
                         <Link
                             key={i}
                             href={link.url ?? '#'}
+                            preserveScroll
+                            preserveState
                             className={`p-2 rounded-lg border text-sm transition ${
                                 link.url
                                     ? 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -28,6 +30,8 @@ export default function Pagination({ links }) {
                         <Link
                             key={i}
                             href={link.url ?? '#'}
+                            preserveScroll
+                            preserveState
                             className={`p-2 rounded-lg border text-sm transition ${
                                 link.url
                                     ? 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -43,6 +47,8 @@ export default function Pagination({ links }) {
                     <Link
                         key={i}
                         href={link.url ?? '#'}
+                        preserveScroll
+                        preserveState
                         className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition ${
                             link.active
                                 ? 'bg-primary-600 text-white border-primary-600'

@@ -262,6 +262,7 @@ export default function ProductsIndex({ products, filters, restockCount, product
         e.preventDefault();
         router.get(route('products.index'), { search, status }, {
             preserveState: true,
+            preserveScroll: true,
             replace:       true,
         });
     }
@@ -269,6 +270,7 @@ export default function ProductsIndex({ products, filters, restockCount, product
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('products.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingDelete(false);
                 setDeleting(null);
@@ -279,6 +281,7 @@ export default function ProductsIndex({ products, filters, restockCount, product
     function handleToggle() {
         setLoadingToggle(true);
         router.patch(route('products.toggle-status', toggling.id), {}, {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingToggle(false);
                 setToggling(null);

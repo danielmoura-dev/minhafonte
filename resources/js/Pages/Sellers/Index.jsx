@@ -21,6 +21,7 @@ export default function SellersIndex({ sellers, filters }) {
         e.preventDefault();
         router.get(route('sellers.index'), { search, seller_type: sellerType, status }, {
             preserveState: true,
+            preserveScroll: true,
             replace: true,
         });
     }
@@ -28,6 +29,7 @@ export default function SellersIndex({ sellers, filters }) {
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('sellers.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingDelete(false);
                 setDeleting(null);
@@ -38,6 +40,7 @@ export default function SellersIndex({ sellers, filters }) {
     function handleToggle() {
         setLoadingToggle(true);
         router.patch(route('sellers.toggle-status', toggling.id), {}, {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingToggle(false);
                 setToggling(null);

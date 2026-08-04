@@ -104,18 +104,19 @@ export default function SalesIndex({ sales, sellers, filters }) {
     function handleFilter(e) {
         e.preventDefault();
         try { localStorage.setItem('sales_filters', JSON.stringify(form)); } catch (_) {}
-        router.get(route('sales.index'), form, { preserveState: true, replace: true });
+        router.get(route('sales.index'), form, { preserveState: true, preserveScroll: true, replace: true });
     }
 
     function handleReset() {
         setForm({});
         try { localStorage.removeItem('sales_filters'); } catch (_) {}
-        router.get(route('sales.index'), {}, { replace: true });
+        router.get(route('sales.index'), {}, { replace: true, preserveScroll: true });
     }
 
     function handleDelete() {
         setLoadingDelete(true);
         router.delete(route('sales.destroy', deleting.id), {
+            preserveScroll: true,
             onFinish: () => {
                 setLoadingDelete(false);
                 setDeleting(null);
