@@ -40,6 +40,7 @@ export default function OrdersIndex({ orders, customers, filters }) {
     const [deleting, setDeleting] = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
     const [unlocking, setUnlocking] = useState(null);
+    const [deletingPaid, setDeletingPaid] = useState(null);
 
     function handleFilter(e) {
         e.preventDefault();
@@ -155,9 +156,14 @@ export default function OrdersIndex({ orders, customers, filters }) {
                                                         <Pencil size={16} strokeWidth={1.75} />
                                                     </button>
                                                 )}
-                                                {isPending && (
+                                                {isPending ? (
                                                     <button onClick={() => setDeleting(order)}
                                                         className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir">
+                                                        <Trash2 size={16} strokeWidth={1.75} />
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => setDeletingPaid(order)}
+                                                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir (requer senha de administrador)">
                                                         <Trash2 size={16} strokeWidth={1.75} />
                                                     </button>
                                                 )}
@@ -176,7 +182,7 @@ export default function OrdersIndex({ orders, customers, filters }) {
             <ConfirmModal
                 show={!!deleting}
                 title="Excluir venda"
-                message={`Excluir a Venda #${deleting?.order_number}? Esta ação não pode ser desfeita. As movimentações de estoque já registradas permanecem no histórico.`}
+                message={`Excluir a Venda #${deleting?.order_number}? Esta ação não pode ser desfeita. O estoque movimentado por esta venda será devolvido.`}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
                 loading={loadingDelete}
@@ -184,7 +190,14 @@ export default function OrdersIndex({ orders, customers, filters }) {
 
             <AdminPasswordModal
                 order={unlocking}
+                mode="edit"
                 onCancel={() => setUnlocking(null)}
+            />
+
+            <AdminPasswordModal
+                order={deletingPaid}
+                mode="delete"
+                onCancel={() => setDeletingPaid(null)}
             />
         </AppLayout>
     );

@@ -315,27 +315,39 @@ class OrderController extends Controller
             ->with('success', "Venda #{$order->order_number} atualizada com sucesso!");
     }
 
-    public function destroy(Order $order): RedirectResponse
+    public function destroy(Request $request, Order $order, OrderStockService $service): RedirectResponse
     {
         $this->authorize('delete', $order);
 
+        // Venda com pagamento exige a senha de administrador para excluir.
         if ($order->payment_status !== 'pending') {
-            return redirect()
-                ->route('orders.index')
-                ->with('error', 'Somente vendas pendentes podem ser excluídas.');
+            $request->validate(['admin_password' => ['required', 'string']]);
+
+            if (! Auth::user()->checkAdminPassword($request->input('admin_password'))) {
+                return back()->withErrors(['admin_password' => 'Senha incorreta.']);
+            }
         }
+
+        $number = $order->order_number;
+
+        DB::transaction(function () use ($order, $service) {
+            // Devolve ao estoque o que a venda tinha movimentado.
+            if ($order->stock_action !== 'none') {
+                $service->reverse($order);
+            }
+
+            $order->delete();
+        });
 
         AuditService::log(
             event:       'order.deleted',
             auditable:   $order,
-            description: "Venda #{$order->order_number} removida.",
+            description: "Venda #{$number} removida.",
         );
-
-        $order->delete();
 
         return redirect()
             ->route('orders.index')
-            ->with('success', "Venda #{$order->order_number} removida com sucesso!");
+            ->with('success', "Venda #{$number} removida com sucesso!");
     }
 
     public function romaneio(Order $order)

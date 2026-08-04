@@ -93,6 +93,38 @@ class PaidOrderEditCheckTest extends TestCase
         fwrite(STDERR, "edit stock: baixa 10 (90) -> estorno (100) -> refaz 5 (95) = " . $product->fresh()->current_stock . "\n");
     }
 
+    public function test_delete_restores_stock(): void
+    {
+        $company = Company::create([
+            'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '1',
+            'email' => 't@e.com', 'password' => bcrypt('x'),
+        ]);
+        $product = \App\Models\Product::create([
+            'company_id' => $company->id, 'code' => 'p1', 'name' => 'prod', 'default_price' => 10,
+            'controls_stock' => true, 'min_quantity' => 0, 'current_stock' => 100, 'active' => true,
+        ]);
+        $this->actingAs($company);
+        $svc = app(\App\Services\OrderStockService::class);
+
+        $order = Order::create([
+            'company_id' => $company->id, 'order_number' => 1, 'issue_date' => now()->toDateString(),
+            'items_count' => 1, 'total' => 80, 'stock_action' => 'deduct', 'payment_status' => 'pending', 'paid_total' => 0,
+        ]);
+        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 8]], false);
+        $this->assertEquals(92, (float) $product->fresh()->current_stock);
+
+        // Simula o destroy: estorna + soft delete
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $svc) {
+            $svc->reverse($order);
+            $order->delete();
+        });
+
+        $this->assertEquals(100, (float) $product->fresh()->current_stock);
+        $this->assertSoftDeleted('orders', ['id' => $order->id]);
+        $this->assertSame(0, \App\Models\ProductMovement::where('order_id', $order->id)->count());
+        fwrite(STDERR, "delete stock: baixa 8 (92) -> excluir estorna (100), movimentos removidos\n");
+    }
+
     public function test_uppercase_stored_on_create(): void
     {
         $company = Company::create([
