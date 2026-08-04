@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,8 @@ class RawMaterial extends Model
             'min_quantity'   => 'decimal:3',
             'current_stock'  => 'decimal:3',
             'active'         => 'boolean',
+            'code'           => Uppercase::class,
+            'name'           => Uppercase::class,
         ];
     }
 

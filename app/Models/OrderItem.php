@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,9 +22,11 @@ class OrderItem extends Model
     protected function casts(): array
     {
         return [
-            'unit_price' => 'decimal:2',
-            'quantity'   => 'decimal:3',
-            'subtotal'   => 'decimal:2',
+            'unit_price'   => 'decimal:2',
+            'quantity'     => 'decimal:3',
+            'subtotal'     => 'decimal:2',
+            'product_name' => Uppercase::class,
+            'product_code' => Uppercase::class,
         ];
     }
 

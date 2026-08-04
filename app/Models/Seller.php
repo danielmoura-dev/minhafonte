@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,9 @@ class Seller extends Authenticatable
             'first_access_at'        => 'datetime',
             'is_active'              => 'boolean',
             'password'               => 'hashed',
+            'name'                   => Uppercase::class,
+            'company_name'           => Uppercase::class,
+            'city'                   => Uppercase::class,
         ];
     }
 

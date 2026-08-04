@@ -171,14 +171,41 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * Verifica a senha de administrador e libera a edição de uma venda com pagamento.
+     */
+    public function unlockEdit(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorize('update', $order);
+
+        $request->validate(['admin_password' => ['required', 'string']]);
+
+        if (! Auth::user()->checkAdminPassword($request->input('admin_password'))) {
+            return back()->withErrors(['admin_password' => 'Senha incorreta.']);
+        }
+
+        session()->put("order_edit_unlocked.{$order->id}", true);
+
+        return redirect()->route('orders.edit', $order);
+    }
+
+    /**
+     * Venda pendente edita livre; venda com pagamento exige desbloqueio por senha.
+     */
+    private function canEdit(Order $order): bool
+    {
+        return $order->payment_status === 'pending'
+            || (bool) session("order_edit_unlocked.{$order->id}");
+    }
+
     public function edit(Order $order): Response|RedirectResponse
     {
         $this->authorize('update', $order);
 
-        if ($order->payment_status !== 'pending') {
+        if (! $this->canEdit($order)) {
             return redirect()
                 ->route('orders.index')
-                ->with('error', 'Somente vendas pendentes podem ser editadas.');
+                ->with('error', 'Esta venda tem pagamento. Informe a senha de administrador para editar.');
         }
 
         $order->load('items');
@@ -194,10 +221,10 @@ class OrderController extends Controller
     {
         $this->authorize('update', $order);
 
-        if ($order->payment_status !== 'pending') {
+        if (! $this->canEdit($order)) {
             return redirect()
                 ->route('orders.index')
-                ->with('error', 'Somente vendas pendentes podem ser editadas.');
+                ->with('error', 'Esta venda tem pagamento. Informe a senha de administrador para editar.');
         }
 
         $data = $request->validated();
@@ -242,6 +269,12 @@ class OrderController extends Controller
             $order->items()->delete();
             $order->items()->createMany($items->all());
         });
+
+        // Recalcula status/saldo em cascata (ex.: total baixou p/ valor já pago -> "pago").
+        $order->recalculatePayment();
+
+        // Consome o desbloqueio: nova edição exige a senha de novo.
+        session()->forget("order_edit_unlocked.{$order->id}");
 
         AuditService::log(
             event:       'order.updated',

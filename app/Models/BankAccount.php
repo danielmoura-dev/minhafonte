@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,7 +25,12 @@ class BankAccount extends Model
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
+            'is_active'    => 'boolean',
+            'name'         => Uppercase::class,
+            'bank'         => Uppercase::class,
+            'agency'       => Uppercase::class,
+            'account'      => Uppercase::class,
+            'account_type' => Uppercase::class,
         ];
     }
 

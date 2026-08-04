@@ -15,11 +15,14 @@ class CompanySettingsController extends Controller
 {
     public function edit(): Response
     {
+        $company = Auth::user();
+
         return Inertia::render('Settings/Company', [
-            'company' => Auth::user()->only([
+            'company' => $company->only([
                 'company_name', 'fantasy_name', 'cnpj', 'email',
                 'logo', 'logo_url', 'phone', 'address', 'city', 'state',
             ]),
+            'hasCustomAdminPassword' => filled($company->admin_password),
         ]);
     }
 
@@ -29,6 +32,11 @@ class CompanySettingsController extends Controller
 
         $data = $request->validated();
         unset($data['logo']);
+
+        // Senha de administrador: só atualiza se foi informada (em branco mantém a atual).
+        if (blank($data['admin_password'] ?? null)) {
+            unset($data['admin_password']);
+        }
 
         if ($request->hasFile('logo')) {
             if ($company->logo) {

@@ -158,6 +158,8 @@ Route::middleware('auth')->group(function () {
     // Vendas (novo módulo de pedidos — rotas estáticas antes do resource)
     Route::get('pedidos/{order}/romaneio', [OrderController::class, 'romaneio'])
         ->name('orders.romaneio');
+    Route::post('pedidos/{order}/desbloquear-edicao', [OrderController::class, 'unlockEdit'])
+        ->name('orders.unlock-edit');
     Route::resource('pedidos', OrderController::class)->parameters([
         'pedidos' => 'order',
     ])->names([

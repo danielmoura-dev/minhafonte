@@ -86,7 +86,7 @@ export default function ProductForm({ data, setData, errors, processing, onSubmi
                             value={data.name}
                             onChange={e => setData('name', e.target.value)}
                             placeholder="Ex: Garrafinha 500ml"
-                            className={inputClass}
+                            className={`${inputClass} uppercase placeholder:normal-case`}
                         />
                     </Field>
 

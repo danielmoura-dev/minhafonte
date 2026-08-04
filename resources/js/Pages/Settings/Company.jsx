@@ -12,15 +12,16 @@ const BR_STATES = [
 
 const inputCls = "w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition";
 
-export default function SettingsCompany({ company }) {
-    const { data, setData, post, processing, errors } = useForm({
-        _method:      'put',
-        fantasy_name: company.fantasy_name ?? '',
-        phone:        company.phone ?? '',
-        address:      company.address ?? '',
-        city:         company.city ?? '',
-        state:        company.state ?? '',
-        logo:         null,
+export default function SettingsCompany({ company, hasCustomAdminPassword }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        _method:        'put',
+        fantasy_name:   company.fantasy_name ?? '',
+        phone:          company.phone ?? '',
+        address:        company.address ?? '',
+        city:           company.city ?? '',
+        state:          company.state ?? '',
+        logo:           null,
+        admin_password: '',
     });
 
     const [logoPreview, setLogoPreview] = useState(company.logo_url ?? null);
@@ -42,7 +43,10 @@ export default function SettingsCompany({ company }) {
 
     function handleSubmit(e) {
         e.preventDefault();
-        post(route('company.settings.update'), { forceFormData: true });
+        post(route('company.settings.update'), {
+            forceFormData: true,
+            onSuccess: () => reset('admin_password'),
+        });
     }
 
     return (
@@ -85,7 +89,7 @@ export default function SettingsCompany({ company }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome da empresa</label>
-                            <input value={data.fantasy_name} onChange={e => setData('fantasy_name', e.target.value)} className={inputCls} placeholder="Nome fantasia" />
+                            <input value={data.fantasy_name} onChange={e => setData('fantasy_name', e.target.value)} className={`${inputCls} uppercase placeholder:normal-case`} placeholder="Nome fantasia" />
                             {errors.fantasy_name && <p className="text-red-500 text-xs mt-1">{errors.fantasy_name}</p>}
                         </div>
                         <div>
@@ -98,11 +102,11 @@ export default function SettingsCompany({ company }) {
                         </div>
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Endereço</label>
-                            <input value={data.address} onChange={e => setData('address', e.target.value)} className={inputCls} placeholder="Rua, número, bairro" />
+                            <input value={data.address} onChange={e => setData('address', e.target.value)} className={`${inputCls} uppercase placeholder:normal-case`} placeholder="Rua, número, bairro" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Cidade</label>
-                            <input value={data.city} onChange={e => setData('city', e.target.value)} className={inputCls} placeholder="Cidade" />
+                            <input value={data.city} onChange={e => setData('city', e.target.value)} className={`${inputCls} uppercase placeholder:normal-case`} placeholder="Cidade" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado</label>
@@ -111,6 +115,29 @@ export default function SettingsCompany({ company }) {
                                 {BR_STATES.map(uf => <option key={uf} value={uf}>{uf}</option>)}
                             </select>
                         </div>
+                    </div>
+                </div>
+
+                {/* Segurança */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h2 className="text-sm font-semibold text-gray-700 mb-1">Senha de administrador</h2>
+                    <p className="text-xs text-gray-400 mb-4">
+                        Necessária para editar uma venda que já tem pagamento.
+                        {hasCustomAdminPassword
+                            ? ' Uma senha personalizada está definida.'
+                            : ' Ainda usando a senha padrão “adm”.'}
+                    </p>
+                    <div className="max-w-xs">
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nova senha</label>
+                        <input
+                            type="password"
+                            value={data.admin_password}
+                            onChange={e => setData('admin_password', e.target.value)}
+                            className={inputCls}
+                            placeholder={hasCustomAdminPassword ? '•••••• (deixe em branco p/ manter)' : 'Defina uma senha (mín. 3)'}
+                            autoComplete="new-password"
+                        />
+                        {errors.admin_password && <p className="text-red-500 text-xs mt-1">{errors.admin_password}</p>}
                     </div>
                 </div>
 

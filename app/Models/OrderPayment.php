@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,6 +24,7 @@ class OrderPayment extends Model
         return [
             'amount'  => 'decimal:2',
             'paid_at' => 'datetime',
+            'notes'   => Uppercase::class,
         ];
     }
 

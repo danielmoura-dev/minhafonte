@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Company;
+use App\Models\Customer;
+use App\Models\Order;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PaidOrderEditCheckTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_admin_password_check(): void
+    {
+        $company = Company::create([
+            'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '1',
+            'email' => 't@e.com', 'password' => bcrypt('x'),
+        ]);
+
+        // Padrão "adm" enquanto não houver senha própria
+        $this->assertTrue($company->checkAdminPassword('adm'));
+        $this->assertFalse($company->checkAdminPassword('errada'));
+
+        // Após definir uma senha própria (cast hashed), "adm" deixa de valer
+        $company->update(['admin_password' => 'segredo123']);
+        $company->refresh();
+        $this->assertFalse($company->checkAdminPassword('adm'));
+        $this->assertTrue($company->checkAdminPassword('segredo123'));
+        fwrite(STDERR, "\nadmin password: padrão adm ok, custom ok, senha errada barrada\n");
+    }
+
+    public function test_edit_paid_order_recalculates_status(): void
+    {
+        $company = Company::create([
+            'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '1',
+            'email' => 't@e.com', 'password' => bcrypt('x'),
+        ]);
+
+        // Venda 150, pago 100 -> parcial
+        $order = Order::create([
+            'company_id' => $company->id, 'order_number' => 1,
+            'issue_date' => now()->toDateString(), 'items_count' => 1, 'total' => 150,
+            'stock_action' => 'none', 'payment_status' => 'pending', 'paid_total' => 0,
+        ]);
+        $order->payments()->create(['company_id' => $company->id, 'amount' => 100, 'method' => 'cheque', 'paid_at' => now()]);
+        $order->recalculatePayment();
+        $this->assertSame('partial', $order->fresh()->payment_status);
+
+        // Editar total para 100 e recalcular -> vira paga, saldo 0
+        $order->update(['total' => 100]);
+        $order->recalculatePayment();
+
+        $fresh = $order->fresh();
+        fwrite(STDERR, "cascade: total={$fresh->total} status={$fresh->payment_status} saldo={$fresh->remaining}\n");
+        $this->assertSame('paid', $fresh->payment_status);
+        $this->assertEquals(0, (float) $fresh->remaining);
+    }
+
+    public function test_uppercase_stored_on_create(): void
+    {
+        $company = Company::create([
+            'company_name' => 'teste ltda', 'fantasy_name' => 'teste', 'cnpj' => '1',
+            'email' => 't@e.com', 'password' => bcrypt('x'),
+        ]);
+        $c = Customer::create(['company_id' => $company->id, 'type' => 'pf', 'name' => 'joão silva', 'city' => 'são paulo', 'email' => 'Ab@C.com']);
+
+        $this->assertSame('JOÃO SILVA', $c->fresh()->name);
+        $this->assertSame('SÃO PAULO', $c->fresh()->city);
+        $this->assertSame('Ab@C.com', $c->fresh()->email); // email intacto
+        fwrite(STDERR, "uppercase: {$c->name} / {$c->city} / email {$c->email}\n");
+    }
+}

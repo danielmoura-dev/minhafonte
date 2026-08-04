@@ -17,7 +17,7 @@ class StorePaymentRequest extends FormRequest
     {
         return [
             'amount'          => ['required', 'numeric', 'gt:0'],
-            'method'          => ['required', Rule::in(['deposit', 'cash'])],
+            'method'          => ['required', Rule::in(['deposit', 'cash', 'cheque'])],
             'bank_account_id' => ['nullable', Rule::exists('bank_accounts', 'id')->where('company_id', Auth::id())],
             'paid_at'         => ['required', 'date'],
             'notes'           => ['nullable', 'string', 'max:1000'],

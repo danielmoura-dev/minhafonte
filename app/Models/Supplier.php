@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,7 +29,11 @@ class Supplier extends Model
     protected function casts(): array
     {
         return [
-            'active' => 'boolean',
+            'active'       => 'boolean',
+            'name'         => Uppercase::class,
+            'fantasy_name' => Uppercase::class,
+            'city'         => Uppercase::class,
+            'notes'        => Uppercase::class,
         ];
     }
 

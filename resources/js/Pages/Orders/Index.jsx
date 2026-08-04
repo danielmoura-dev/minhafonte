@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Eye, Pencil, Trash2, Printer, ShoppingCart } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
+import AdminPasswordModal from '@/Components/Orders/AdminPasswordModal';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -38,6 +39,7 @@ export default function OrdersIndex({ orders, customers, filters }) {
     const [status, setStatus] = useState(filters.payment_status ?? '');
     const [deleting, setDeleting] = useState(null);
     const [loadingDelete, setLoadingDelete] = useState(false);
+    const [unlocking, setUnlocking] = useState(null);
 
     function handleFilter(e) {
         e.preventDefault();
@@ -142,17 +144,22 @@ export default function OrdersIndex({ orders, customers, filters }) {
                                                     className="p-2 rounded-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition" title="Imprimir romaneio">
                                                     <Printer size={16} strokeWidth={1.75} />
                                                 </a>
+                                                {isPending ? (
+                                                    <Link href={route('orders.edit', order.id)}
+                                                        className="p-2 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition" title="Editar">
+                                                        <Pencil size={16} strokeWidth={1.75} />
+                                                    </Link>
+                                                ) : (
+                                                    <button onClick={() => setUnlocking(order)}
+                                                        className="p-2 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition" title="Editar (requer senha de administrador)">
+                                                        <Pencil size={16} strokeWidth={1.75} />
+                                                    </button>
+                                                )}
                                                 {isPending && (
-                                                    <>
-                                                        <Link href={route('orders.edit', order.id)}
-                                                            className="p-2 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition" title="Editar">
-                                                            <Pencil size={16} strokeWidth={1.75} />
-                                                        </Link>
-                                                        <button onClick={() => setDeleting(order)}
-                                                            className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir">
-                                                            <Trash2 size={16} strokeWidth={1.75} />
-                                                        </button>
-                                                    </>
+                                                    <button onClick={() => setDeleting(order)}
+                                                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir">
+                                                        <Trash2 size={16} strokeWidth={1.75} />
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -173,6 +180,11 @@ export default function OrdersIndex({ orders, customers, filters }) {
                 onConfirm={handleDelete}
                 onCancel={() => setDeleting(null)}
                 loading={loadingDelete}
+            />
+
+            <AdminPasswordModal
+                order={unlocking}
+                onCancel={() => setUnlocking(null)}
             />
         </AppLayout>
     );

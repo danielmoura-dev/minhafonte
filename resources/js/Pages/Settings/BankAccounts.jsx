@@ -34,7 +34,7 @@ function AccountForm({ editing, onClose }) {
                 <form onSubmit={submit} className="flex flex-col gap-3.5">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome da conta <span className="text-red-500">*</span></label>
-                        <input value={data.name} onChange={e => setData('name', e.target.value)} className={inputCls} placeholder="Ex: Conta principal" />
+                        <input value={data.name} onChange={e => setData('name', e.target.value)} className={`${inputCls} uppercase placeholder:normal-case`} placeholder="Ex: Conta principal" />
                         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-3">

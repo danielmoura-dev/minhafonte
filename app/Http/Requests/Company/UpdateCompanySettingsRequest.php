@@ -17,9 +17,10 @@ class UpdateCompanySettingsRequest extends FormRequest
             'fantasy_name' => ['nullable', 'string', 'max:255'],
             'phone'        => ['nullable', 'string', 'max:20'],
             'address'      => ['nullable', 'string', 'max:255'],
-            'city'         => ['nullable', 'string', 'max:100'],
-            'state'        => ['nullable', 'string', 'max:2'],
-            'logo'         => ['nullable', 'image', 'max:4096'],
+            'city'           => ['nullable', 'string', 'max:100'],
+            'state'          => ['nullable', 'string', 'max:2'],
+            'logo'           => ['nullable', 'image', 'max:4096'],
+            'admin_password' => ['nullable', 'string', 'min:3', 'max:255'],
         ];
     }
 }

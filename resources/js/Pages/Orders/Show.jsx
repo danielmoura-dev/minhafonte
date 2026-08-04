@@ -20,7 +20,7 @@ const STATUS = {
     partial: { label: 'Parcialmente Pago', cls: 'text-blue-700 bg-blue-50', dot: 'bg-blue-500' },
     paid:    { label: 'Pago', cls: 'text-green-700 bg-green-50', dot: 'bg-green-500' },
 };
-const METHOD = { cash: 'Espécie (Dinheiro)', deposit: 'Depósito (Pix)' };
+const METHOD = { cash: 'Espécie (Dinheiro)', deposit: 'Depósito (Pix)', cheque: 'Cheque' };
 
 export default function OrderShow({ order }) {
     const s = STATUS[order.payment_status] ?? STATUS.pending;

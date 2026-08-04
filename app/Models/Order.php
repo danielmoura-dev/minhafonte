@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Uppercase;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,9 +39,14 @@ class Order extends Model
     protected function casts(): array
     {
         return [
-            'issue_date' => 'date',
-            'total'      => 'decimal:2',
-            'paid_total' => 'decimal:2',
+            'issue_date'            => 'date',
+            'total'                 => 'decimal:2',
+            'paid_total'            => 'decimal:2',
+            'delivery_street'       => Uppercase::class,
+            'delivery_complement'   => Uppercase::class,
+            'delivery_neighborhood' => Uppercase::class,
+            'delivery_city'         => Uppercase::class,
+            'notes'                 => Uppercase::class,
         ];
     }
 

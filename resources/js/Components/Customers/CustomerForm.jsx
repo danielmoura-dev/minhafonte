@@ -16,14 +16,17 @@ function Field({ label, error, required, children, className = '' }) {
     );
 }
 
-function Input(props) {
+function Input({ className = '', ...props }) {
     return (
         <input
             {...props}
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+            className={`w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition ${className}`}
         />
     );
 }
+
+// Campos de texto de negócio já aparecem em maiúsculo enquanto o usuário digita.
+const upper = 'uppercase placeholder:normal-case';
 
 function Select({ children, ...props }) {
     return (
@@ -83,6 +86,7 @@ export default function CustomerForm({ data, setData, errors, processing, onSubm
                             value={data.name}
                             onChange={e => setData('name', e.target.value)}
                             placeholder="Nome do cliente"
+                            className={upper}
                         />
                     </Field>
 
@@ -156,6 +160,7 @@ export default function CustomerForm({ data, setData, errors, processing, onSubm
                             value={data.street}
                             onChange={e => setData('street', e.target.value)}
                             placeholder="Rua / Avenida"
+                            className={upper}
                         />
                     </Field>
 
@@ -174,6 +179,7 @@ export default function CustomerForm({ data, setData, errors, processing, onSubm
                             value={data.complement}
                             onChange={e => setData('complement', e.target.value)}
                             placeholder="Apto, bloco..."
+                            className={upper}
                         />
                     </Field>
 
@@ -183,6 +189,7 @@ export default function CustomerForm({ data, setData, errors, processing, onSubm
                             value={data.neighborhood}
                             onChange={e => setData('neighborhood', e.target.value)}
                             placeholder="Bairro"
+                            className={upper}
                         />
                     </Field>
 
@@ -192,6 +199,7 @@ export default function CustomerForm({ data, setData, errors, processing, onSubm
                             value={data.city}
                             onChange={e => setData('city', e.target.value)}
                             placeholder="Cidade"
+                            className={upper}
                         />
                     </Field>
 
