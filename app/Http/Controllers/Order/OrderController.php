@@ -217,7 +217,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function update(UpdateOrderRequest $request, Order $order): RedirectResponse
+    public function update(UpdateOrderRequest $request, Order $order, OrderStockService $service): RedirectResponse
     {
         $this->authorize('update', $order);
 
@@ -227,48 +227,76 @@ class OrderController extends Controller
                 ->with('error', 'Esta venda tem pagamento. Informe a senha de administrador para editar.');
         }
 
-        $data = $request->validated();
+        $data  = $request->validated();
+        $force = (bool) ($data['force'] ?? false);
 
         $products = Product::fromCompany(Auth::id())
             ->whereIn('id', collect($data['items'])->pluck('product_id'))
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($order, $data, $products) {
-            $items = collect($data['items'])->map(function ($item) use ($products) {
-                $product = $products[$item['product_id']];
-                $qty     = (float) $item['quantity'];
-                $price   = (float) $item['unit_price'];
+        try {
+            DB::transaction(function () use ($order, $data, $products, $service, $force) {
+                $items = collect($data['items'])->map(function ($item) use ($products) {
+                    $product = $products[$item['product_id']];
+                    $qty     = (float) $item['quantity'];
+                    $price   = (float) $item['unit_price'];
 
-                return [
-                    'product_id'    => $product->id,
-                    'product_name'  => $product->name,
-                    'product_code'  => $product->code,
-                    'product_photo' => $product->photo,
-                    'unit_price'    => $price,
-                    'quantity'      => $qty,
-                    'subtotal'      => round($price * $qty, 2),
-                ];
+                    return [
+                        'product_id'    => $product->id,
+                        'product_name'  => $product->name,
+                        'product_code'  => $product->code,
+                        'product_photo' => $product->photo,
+                        'unit_price'    => $price,
+                        'quantity'      => $qty,
+                        'subtotal'      => round($price * $qty, 2),
+                    ];
+                });
+
+                $order->update([
+                    'customer_id'           => $data['customer_id'],
+                    'issue_date'            => $data['issue_date'],
+                    'delivery_street'       => $data['delivery_street'] ?? null,
+                    'delivery_number'       => $data['delivery_number'] ?? null,
+                    'delivery_complement'   => $data['delivery_complement'] ?? null,
+                    'delivery_neighborhood' => $data['delivery_neighborhood'] ?? null,
+                    'delivery_city'         => $data['delivery_city'] ?? null,
+                    'delivery_state'        => $data['delivery_state'] ?? null,
+                    'delivery_zip_code'     => $data['delivery_zip_code'] ?? null,
+                    'items_count'           => $items->count(),
+                    'total'                 => round($items->sum('subtotal'), 2),
+                    'notes'                 => $data['notes'] ?? null,
+                ]);
+
+                $order->items()->delete();
+                $order->items()->createMany($items->all());
+
+                // Reprocessa o estoque: estorna o que a venda tinha movimentado e
+                // refaz com os novos itens, mantendo a mesma opção (baixa/produção).
+                if ($order->stock_action !== 'none') {
+                    $stockItems = $items->map(fn ($i) => [
+                        'product_id' => $i['product_id'],
+                        'quantity'   => $i['quantity'],
+                    ])->all();
+
+                    $service->reverse($order);
+
+                    if (! $force) {
+                        $shortages = $service->previewShortages($stockItems, $order->stock_action);
+                        if (! empty($shortages['products']) || ! empty($shortages['materials'])) {
+                            // Rola a transação de volta e devolve a lista para o modal de aviso.
+                            throw ValidationException::withMessages([
+                                'stock_shortage' => json_encode($shortages),
+                            ]);
+                        }
+                    }
+
+                    $service->apply($order, $order->stock_action, $stockItems, $force);
+                }
             });
-
-            $order->update([
-                'customer_id'           => $data['customer_id'],
-                'issue_date'            => $data['issue_date'],
-                'delivery_street'       => $data['delivery_street'] ?? null,
-                'delivery_number'       => $data['delivery_number'] ?? null,
-                'delivery_complement'   => $data['delivery_complement'] ?? null,
-                'delivery_neighborhood' => $data['delivery_neighborhood'] ?? null,
-                'delivery_city'         => $data['delivery_city'] ?? null,
-                'delivery_state'        => $data['delivery_state'] ?? null,
-                'delivery_zip_code'     => $data['delivery_zip_code'] ?? null,
-                'items_count'           => $items->count(),
-                'total'                 => round($items->sum('subtotal'), 2),
-                'notes'                 => $data['notes'] ?? null,
-            ]);
-
-            $order->items()->delete();
-            $order->items()->createMany($items->all());
-        });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage() . ' Ative a opção de continuar mesmo com estoque negativo.');
+        }
 
         // Recalcula status/saldo em cascata (ex.: total baixou p/ valor já pago -> "pago").
         $order->recalculatePayment();

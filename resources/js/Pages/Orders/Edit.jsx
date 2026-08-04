@@ -1,10 +1,12 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { useForm, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import OrderForm from '@/Components/Orders/OrderForm';
+import ShortageModal from '@/Components/Orders/ShortageModal';
 
 export default function OrderEdit({ order, customers, products }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const form = useForm({
         customer_id:           String(order.customer_id ?? ''),
         issue_date:            order.issue_date ? order.issue_date.slice(0, 10) : '',
         delivery_street:       order.delivery_street ?? '',
@@ -20,11 +22,34 @@ export default function OrderEdit({ order, customers, products }) {
             unit_price: parseFloat(it.unit_price),
         })),
         notes: order.notes ?? '',
+        force: false,
     });
+
+    const { data, setData, errors, processing } = form;
+    const [shortage, setShortage] = useState(null);
+
+    function submit(force) {
+        form.transform(d => ({ ...d, force }));
+        form.put(route('orders.update', order.id), {
+            onError: (errs) => {
+                if (errs.stock_shortage) {
+                    try {
+                        const parsed = JSON.parse(errs.stock_shortage);
+                        setShortage({ products: parsed.products ?? [], materials: parsed.materials ?? [] });
+                    } catch {
+                        setShortage(null);
+                    }
+                } else {
+                    setShortage(null);
+                }
+            },
+            onFinish: () => form.transform(d => d),
+        });
+    }
 
     function handleSubmit(e) {
         e.preventDefault();
-        put(route('orders.update', order.id));
+        submit(false);
     }
 
     return (
@@ -40,7 +65,7 @@ export default function OrderEdit({ order, customers, products }) {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Editar venda #{order.order_number}</h1>
                     <p className="text-sm text-gray-400 mt-1">
-                        A movimentação de estoque não é refeita ao editar — ela permanece como registrada.
+                        Ao salvar, o estoque é reprocessado conforme os novos itens (mesma opção da venda).
                     </p>
                 </div>
             </div>
@@ -54,6 +79,13 @@ export default function OrderEdit({ order, customers, products }) {
                 products={products}
                 onSubmit={handleSubmit}
                 submitLabel="Salvar alterações"
+            />
+
+            <ShortageModal
+                shortage={shortage}
+                loading={processing}
+                onCancel={() => setShortage(null)}
+                onContinue={() => submit(true)}
             />
         </AppLayout>
     );

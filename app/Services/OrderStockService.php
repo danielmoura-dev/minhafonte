@@ -213,6 +213,41 @@ class OrderStockService
         $product->update(['current_stock' => $after]);
     }
 
+    /**
+     * Estorna as movimentações de estoque geradas por esta venda, devolvendo ao
+     * estoque exatamente o que cada movimento havia alterado (delta inverso) e
+     * removendo os registros. Usado antes de reprocessar na edição.
+     */
+    public function reverse(Order $order): void
+    {
+        $movements = $order->movements()->get();
+
+        foreach ($movements as $pm) {
+            // Estorna as matérias-primas consumidas por este movimento (produção)
+            $rawMovements = RawMaterialMovement::where('product_movement_id', $pm->id)->get();
+            foreach ($rawMovements as $rmm) {
+                $delta = (float) $rmm->stock_after - (float) $rmm->stock_before;
+                if ($delta !== 0.0) {
+                    $mat = RawMaterial::lockForUpdate()->find($rmm->raw_material_id);
+                    if ($mat) {
+                        $mat->update(['current_stock' => (float) $mat->current_stock - $delta]);
+                    }
+                }
+                $rmm->delete();
+            }
+
+            // Estorna o produto
+            $delta = (float) $pm->stock_after - (float) $pm->stock_before;
+            if ($delta !== 0.0) {
+                $product = Product::lockForUpdate()->find($pm->product_id);
+                if ($product) {
+                    $product->update(['current_stock' => (float) $product->current_stock - $delta]);
+                }
+            }
+            $pm->delete();
+        }
+    }
+
     private function actorName(): ?string
     {
         $company = Auth::user();

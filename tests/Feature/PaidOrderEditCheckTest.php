@@ -58,6 +58,41 @@ class PaidOrderEditCheckTest extends TestCase
         $this->assertEquals(0, (float) $fresh->remaining);
     }
 
+    public function test_edit_reprocesses_stock(): void
+    {
+        $company = Company::create([
+            'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '1',
+            'email' => 't@e.com', 'password' => bcrypt('x'),
+        ]);
+        $product = \App\Models\Product::create([
+            'company_id' => $company->id, 'code' => 'p1', 'name' => 'prod', 'default_price' => 10,
+            'controls_stock' => true, 'min_quantity' => 0, 'current_stock' => 100, 'active' => true,
+        ]);
+        $this->actingAs($company);
+        $svc = app(\App\Services\OrderStockService::class);
+
+        $order = Order::create([
+            'company_id' => $company->id, 'order_number' => 1, 'issue_date' => now()->toDateString(),
+            'items_count' => 1, 'total' => 50, 'stock_action' => 'deduct', 'payment_status' => 'pending', 'paid_total' => 0,
+        ]);
+
+        // baixa de 10 -> 90
+        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 10]], false);
+        $this->assertEquals(90, (float) $product->fresh()->current_stock);
+        $this->assertSame(1, $order->movements()->count());
+
+        // estorno -> volta a 100, sem movimentos
+        $svc->reverse($order);
+        $this->assertEquals(100, (float) $product->fresh()->current_stock);
+        $this->assertSame(0, $order->movements()->count());
+
+        // refaz com 5 -> 95
+        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 5]], false);
+        $this->assertEquals(95, (float) $product->fresh()->current_stock);
+
+        fwrite(STDERR, "edit stock: baixa 10 (90) -> estorno (100) -> refaz 5 (95) = " . $product->fresh()->current_stock . "\n");
+    }
+
     public function test_uppercase_stored_on_create(): void
     {
         $company = Company::create([
