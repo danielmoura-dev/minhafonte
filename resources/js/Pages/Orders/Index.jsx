@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Eye, Pencil, Trash2, Printer, ShoppingCart } from 'lucide-react';
+import { Plus, Eye, Pencil, Trash2, Printer, ShoppingCart, History } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 import AdminPasswordModal from '@/Components/Orders/AdminPasswordModal';
@@ -105,6 +105,15 @@ export default function OrdersIndex({ orders, customers, filters }) {
                 <button type="submit" className="px-4 py-2.5 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition">
                     Filtrar
                 </button>
+
+                <Link
+                    href={route('orders.trashed')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs text-gray-400 hover:text-gray-700 transition"
+                    title="Ver vendas excluídas"
+                >
+                    <History size={14} strokeWidth={1.75} />
+                    Histórico de exclusão
+                </Link>
             </form>
 
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

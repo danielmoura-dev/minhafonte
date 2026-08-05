@@ -47,6 +47,33 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * Histórico de exclusão: vendas removidas (soft delete), com os itens
+     * para consulta. Somente leitura.
+     */
+    public function trashed(Request $request): Response
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $orders = Order::onlyTrashed()
+            ->fromCompany(Auth::id())
+            ->with(['customer:id,name', 'items'])
+            ->when($request->search, function ($q, $term) {
+                $q->where(fn ($sub) => $sub
+                    ->where('order_number', 'like', "%{$term}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$term}%"))
+                );
+            })
+            ->orderByDesc('deleted_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('Orders/Trashed', [
+            'orders'  => $orders,
+            'filters' => $request->only('search'),
+        ]);
+    }
+
     public function create(): Response
     {
         $this->authorize('create', Order::class);

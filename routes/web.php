@@ -156,6 +156,8 @@ Route::middleware('auth')->group(function () {
         ->name('customers.toggle-status');
 
     // Vendas (novo módulo de pedidos — rotas estáticas antes do resource)
+    Route::get('pedidos/historico-exclusao', [OrderController::class, 'trashed'])
+        ->name('orders.trashed');
     Route::get('pedidos/{order}/romaneio', [OrderController::class, 'romaneio'])
         ->name('orders.romaneio');
     Route::post('pedidos/{order}/desbloquear-edicao', [OrderController::class, 'unlockEdit'])
