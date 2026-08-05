@@ -208,9 +208,10 @@ Route::middleware('auth')->group(function () {
     ])->names([
         'index'   => 'bank-accounts.index',
         'store'   => 'bank-accounts.store',
+        'show'    => 'bank-accounts.show',
         'update'  => 'bank-accounts.update',
         'destroy' => 'bank-accounts.destroy',
-    ])->only(['index', 'store', 'update', 'destroy']);
+    ])->only(['index', 'store', 'show', 'update', 'destroy']);
     Route::patch('configuracoes/contas/{bankAccount}/toggle-status', [BankAccountController::class, 'toggleStatus'])
         ->name('bank-accounts.toggle-status');
 

@@ -1,8 +1,12 @@
 import AppLayout from '@/Layouts/AppLayout';
-import { useForm, router, usePage } from '@inertiajs/react';
+import { useForm, router, usePage, Link } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Landmark, Pencil, Trash2, Power, PowerOff, X } from 'lucide-react';
+import { Plus, Landmark, Pencil, Trash2, Power, PowerOff, X, ChevronRight } from 'lucide-react';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+}
 
 const inputCls = "w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition";
 
@@ -79,7 +83,7 @@ function AccountForm({ editing, onClose }) {
     );
 }
 
-export default function SettingsBankAccounts({ accounts }) {
+export default function SettingsBankAccounts({ accounts, unlinkedTotal }) {
     const { flash } = usePage().props;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -116,6 +120,23 @@ export default function SettingsBankAccounts({ accounts }) {
                 </button>
             </div>
 
+            {/* Resumo geral */}
+            {accounts.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Total recebido nas contas</p>
+                        <p className="text-2xl font-bold text-green-600 mt-1">
+                            {formatCurrency(accounts.reduce((sum, a) => sum + (parseFloat(a.received_total) || 0), 0))}
+                        </p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Recebido sem conta vinculada</p>
+                        <p className="text-2xl font-bold text-gray-500 mt-1">{formatCurrency(unlinkedTotal)}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Pagamentos lançados sem escolher a conta</p>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 {accounts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -131,23 +152,37 @@ export default function SettingsBankAccounts({ accounts }) {
                                 <th className="text-left px-5 py-3 font-semibold">Banco</th>
                                 <th className="text-left px-5 py-3 font-semibold">Ag / Conta</th>
                                 <th className="text-left px-5 py-3 font-semibold">Tipo</th>
+                                <th className="text-right px-5 py-3 font-semibold">Recebido</th>
                                 <th className="text-left px-5 py-3 font-semibold">Status</th>
                                 <th className="px-5 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {accounts.map(a => (
-                                <tr key={a.id} className={`hover:bg-gray-50 transition ${!a.is_active ? 'opacity-60' : ''}`}>
-                                    <td className="px-5 py-3.5 font-medium text-gray-900">{a.name}</td>
+                                <tr key={a.id}
+                                    onClick={() => router.visit(route('bank-accounts.show', a.id))}
+                                    className={`hover:bg-gray-50 transition cursor-pointer ${!a.is_active ? 'opacity-60' : ''}`}>
+                                    <td className="px-5 py-3.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-gray-900">{a.name}</span>
+                                            <ChevronRight size={14} className="text-gray-300" />
+                                        </div>
+                                    </td>
                                     <td className="px-5 py-3.5 text-gray-600">{a.bank || '—'}</td>
                                     <td className="px-5 py-3.5 text-gray-600">{[a.agency, a.account].filter(Boolean).join(' / ') || '—'}</td>
                                     <td className="px-5 py-3.5 text-gray-600 capitalize">{a.account_type || '—'}</td>
+                                    <td className="px-5 py-3.5 text-right">
+                                        <span className="font-semibold text-green-600">{formatCurrency(a.received_total)}</span>
+                                        <span className="block text-[11px] text-gray-400">
+                                            {a.received_count ?? 0} entrada{(a.received_count ?? 0) !== 1 ? 's' : ''}
+                                        </span>
+                                    </td>
                                     <td className="px-5 py-3.5">
                                         {a.is_active
                                             ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>Ativa</span>
                                             : <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Inativa</span>}
                                     </td>
-                                    <td className="px-5 py-3.5">
+                                    <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-1">
                                             <button onClick={() => router.patch(route('bank-accounts.toggle-status', a.id), {}, { preserveScroll: true })}
                                                 className={`p-2 rounded-lg transition ${a.is_active ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
