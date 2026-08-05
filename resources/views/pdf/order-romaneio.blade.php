@@ -3,130 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        @page { margin: 5mm 7mm; }
+        /* Sem margem de página: cada via é uma metade exata da A4,
+           permitindo cortar a folha no meio (148,5mm). */
+        @page { margin: 0; }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: "DejaVu Serif", Times, serif;
-            font-size: 8.5pt;
-            color: #000;
+            font-family: "DejaVu Sans", sans-serif;
+            font-size: 7.5pt;
+            color: #0f172a;
         }
 
-        /* Cada via ocupa metade da folha A4 (retrato).
-           min-height (e não height) para que muitos itens empurrem o layout
-           em vez de sobrepor a via de baixo. */
-        .half {
-            min-height: 139mm;
-            /* Pedidos longos empurram a via inteira para a página seguinte
-               em vez de cortá-la ao meio. */
-            page-break-inside: avoid;
+        table.sheet { width: 100%; border-collapse: collapse; }
+
+        /* Metade da folha: conteúdo centralizado na vertical + borda lateral */
+        td.half {
+            height: 148mm;
+            vertical-align: middle;
+            padding: 0 11mm;
         }
+        td.half.second { border-top: 1px dashed #94a3b8; }
 
         /* ── Canhoto (assinatura + nº do pedido) ── */
         table.stub {
             width: 100%;
             border-collapse: separate;
-            border-spacing: 4px 0;
+            border-spacing: 5px 0;
         }
         table.stub td {
-            border: 1px solid #000;
-            padding: 5px 8px;
+            border: 1px solid #94a3b8;
+            padding: 6px 9px;
             vertical-align: top;
         }
         td.stub-order {
-            width: 62px;
+            width: 68px;
             text-align: center;
-            font-weight: bold;
-            line-height: 1.3;
+            border-color: #0369a1;
+            background: #f0f9ff;
         }
-        .stub-line { padding: 2px 0; }
-        .dots { letter-spacing: -0.5px; }
+        .stub-order-lbl {
+            font-size: 6pt;
+            color: #0369a1;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .stub-order-num {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #0369a1;
+            line-height: 1.1;
+        }
+        .stub-line { padding: 2px 0; color: #334155; }
+        .dots { color: #94a3b8; letter-spacing: -0.5px; }
 
-        /* ── Linha pontilhada (destaque do canhoto) ── */
-        .cut {
-            border-top: 1px dotted #000;
-            margin: 4px 0 5px;
+        .tear {
+            border-top: 1px dotted #94a3b8;
+            margin: 5px 0 6px;
             height: 0;
         }
 
-        /* ── Cabeçalho (logo + dados + nº) ── */
+        /* ── Cabeçalho ── */
         table.head {
             width: 100%;
-            border: 1px solid #000;
+            border: 1px solid #94a3b8;
+            border-top: 2px solid #0369a1;
             border-collapse: collapse;
+            background: #f8fafc;
         }
-        table.head td { vertical-align: middle; padding: 4px 6px; }
-        td.logo-cell { width: 130px; text-align: center; }
-        td.logo-cell img { max-height: 46px; max-width: 120px; }
-        .brand { font-size: 12pt; font-weight: bold; }
-        table.info { width: 100%; border-collapse: collapse; }
-        table.info td { padding: 1px 0; font-size: 8.5pt; border: none; }
-        td.lbl { width: 82px; white-space: nowrap; padding-right: 8px; }
-        td.num-cell {
-            width: 62px;
-            text-align: right;
-            font-size: 15pt;
+        table.head td { vertical-align: middle; padding: 6px 8px; }
+        td.logo-cell { width: 122px; text-align: center; }
+        td.logo-cell img { max-height: 42px; max-width: 112px; }
+        .brand {
+            font-size: 11pt;
             font-weight: bold;
-            vertical-align: top;
-            padding-top: 6px;
+            color: #0369a1;
+            letter-spacing: 0.3px;
+        }
+        table.info { width: 100%; border-collapse: collapse; }
+        table.info td { padding: 1.5px 0; border: none; font-size: 7.5pt; }
+        td.lbl {
+            width: 74px;
+            white-space: nowrap;
+            padding-right: 8px;
+            color: #64748b;
+            font-size: 6.5pt;
+            letter-spacing: 0.4px;
+        }
+        td.val { color: #0f172a; font-weight: bold; }
+        td.num-cell { width: 78px; text-align: right; vertical-align: top; }
+        .num {
+            font-size: 17pt;
+            font-weight: bold;
+            color: #0369a1;
+            line-height: 1;
+        }
+        .via-tag {
+            font-size: 5.5pt;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-top: 3px;
         }
 
-        /* ── Tabela de itens ── */
+        /* ── Itens ── */
         table.items {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            border-left: 1px solid #000;
-            border-right: 1px solid #000;
-        }
-        table.items th,
-        table.items td {
-            border: 1px solid #000;
-            padding: 4px 6px;
         }
         table.items th {
-            background: #808080;
+            background: #0369a1;
             color: #fff;
-            font-size: 8pt;
+            font-size: 6.5pt;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             text-align: center;
-            line-height: 1.15;
+            padding: 5px 6px;
+            border: 1px solid #0369a1;
+            line-height: 1.2;
         }
-        td.qty   { text-align: right; }
+        table.items td {
+            border: 1px solid #cbd5e1;
+            padding: 4px 7px;
+            height: 19px;
+        }
+        td.qty   { text-align: right; font-weight: bold; }
         td.money { text-align: right; }
-        td.row-h { height: 20px; }
+        td.ref   { color: #0f172a; }
 
-        td.gray {
-            background: #808080;
-            color: #fff;
+        /* Totais / recebido */
+        td.tot-lbl {
+            background: #e0f2fe;
+            color: #075985;
             font-weight: bold;
-            text-align: center;
-            font-size: 8pt;
-            line-height: 1.15;
-        }
-        td.center { text-align: center; }
-        td.recebido {
-            background: #808080;
-            color: #fff;
-            font-weight: bold;
-            font-size: 8.5pt;
-        }
-
-        /* ── Divisória entre as duas vias (dobra/corte) ── */
-        .fold {
-            border-top: 1px dashed #666;
             text-align: center;
             font-size: 6.5pt;
-            color: #666;
-            margin: 3mm 0 4mm;
-            height: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            line-height: 1.2;
+            border-color: #94a3b8;
         }
-        .fold span {
-            background: #fff;
-            padding: 0 6px;
-            position: relative;
-            top: -4pt;
+        td.tot-val {
+            text-align: center;
+            font-weight: bold;
+            font-size: 8.5pt;
+            border-color: #94a3b8;
+        }
+        td.tot-money {
+            text-align: right;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #0369a1;
+            border-color: #94a3b8;
+        }
+        td.receb {
+            background: #e0f2fe;
+            color: #075985;
+            font-weight: bold;
+            font-size: 7pt;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            border-color: #94a3b8;
+        }
+
+        /* ── Rodapé discreto com a marca Fonte Pro ── */
+        table.foot { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        table.foot td { border: none; padding: 0; vertical-align: middle; }
+        td.foot-cut { font-size: 5.5pt; color: #94a3b8; letter-spacing: 0.3px; }
+        td.foot-brand { text-align: right; white-space: nowrap; }
+        td.foot-brand img { height: 13px; vertical-align: middle; }
+        .fp {
+            font-size: 5.5pt;
+            color: #94a3b8;
+            letter-spacing: 0.4px;
+            vertical-align: middle;
+            padding-left: 3px;
         }
     </style>
 </head>
@@ -147,140 +200,155 @@
         ? public_path('storage/' . $company->logo)
         : null;
 
-    // Quantidade sem casas decimais desnecessárias (102, 10,5 ...)
+    $fpLogo = file_exists(public_path('images/logo2.png'))
+        ? public_path('images/logo2.png')
+        : null;
+
     $fmtQty = fn ($q) => rtrim(rtrim(number_format((float) $q, 3, ',', '.'), '0'), ',');
 
     $totalQty = $order->items->sum('quantity');
 
-    // Linhas em branco para a via ocupar a metade da folha (e permitir anotações)
-    $minRows = 9;
+    // Linhas em branco para equilibrar a via na metade da folha
+    $minRows = 8;
     $filler  = max(0, $minRows - $order->items->count());
 @endphp
 
-{{-- Via 1: com valores · Via 2: somente produtos --}}
+<table class="sheet">
 @foreach ([true, false] as $showPrices)
+    <tr>
+        <td class="half {{ $loop->last ? 'second' : '' }}">
 
-    <div class="half">
-
-        {{-- Canhoto --}}
-        <table class="stub">
-            <tr>
-                <td>
-                    <div class="stub-line">
-                        Assinatura: <span class="dots">___________________________________________________________</span>
-                    </div>
-                    <div class="stub-line">
-                        Data: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dots">_______</span> /
-                        <span class="dots">_______</span> / <span class="dots">_________</span>
-                    </div>
-                </td>
-                <td class="stub-order">
-                    Pedido<br>{{ $order->order_number }}
-                </td>
-            </tr>
-        </table>
-
-        <div class="cut"></div>
-
-        {{-- Cabeçalho --}}
-        <table class="head">
-            <tr>
-                <td class="logo-cell">
-                    @if ($logoPath)
-                        <img src="{{ $logoPath }}" alt="">
-                    @else
-                        <span class="brand">{{ $company->fantasy_name ?: $company->company_name }}</span>
-                    @endif
-                </td>
-                <td>
-                    <table class="info">
-                        <tr>
-                            <td class="lbl">DATA:</td>
-                            <td>{{ Carbon::parse($order->issue_date)->format('d/m/Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td class="lbl">CLIENTE:</td>
-                            <td>{{ $order->customer->name ?? '' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="lbl">ENDEREÇO:</td>
-                            <td>{{ $addr }}</td>
-                        </tr>
-                        <tr>
-                            <td class="lbl">TELEFONE:</td>
-                            <td>{{ $order->customer->phone ?? '' }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td class="num-cell">{{ $order->order_number }}</td>
-            </tr>
-        </table>
-
-        {{-- Itens --}}
-        <table class="items">
-            <thead>
+            {{-- Canhoto --}}
+            <table class="stub">
                 <tr>
-                    @if ($showPrices)
-                        <th style="width: 20%;">QUANTIDADE</th>
-                        <th style="width: 38%;">REFERÊNCIA</th>
-                        <th style="width: 21%;">VALOR<br>UNITÁRIO</th>
-                        <th style="width: 21%;">VALOR TOTAL</th>
-                    @else
-                        <th style="width: 20%;">QUANTIDADE</th>
-                        <th style="width: 80%;">REFERÊNCIA</th>
-                    @endif
+                    <td>
+                        <div class="stub-line">
+                            Assinatura: <span class="dots">_______________________________________________________</span>
+                        </div>
+                        <div class="stub-line">
+                            Data: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="dots">_______</span> /
+                            <span class="dots">_______</span> / <span class="dots">_________</span>
+                        </div>
+                    </td>
+                    <td class="stub-order">
+                        <div class="stub-order-lbl">Pedido</div>
+                        <div class="stub-order-num">{{ $order->order_number }}</div>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach ($order->items as $item)
+            </table>
+
+            <div class="tear"></div>
+
+            {{-- Cabeçalho --}}
+            <table class="head">
+                <tr>
+                    <td class="logo-cell">
+                        @if ($logoPath)
+                            <img src="{{ $logoPath }}" alt="">
+                        @else
+                            <span class="brand">{{ $company->fantasy_name ?: $company->company_name }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        <table class="info">
+                            <tr>
+                                <td class="lbl">DATA</td>
+                                <td class="val">{{ Carbon::parse($order->issue_date)->format('d/m/Y') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="lbl">CLIENTE</td>
+                                <td class="val">{{ $order->customer->name ?? '' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="lbl">ENDEREÇO</td>
+                                <td>{{ $addr }}</td>
+                            </tr>
+                            <tr>
+                                <td class="lbl">TELEFONE</td>
+                                <td>{{ $order->customer->phone ?? '' }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class="num-cell">
+                        <div class="num">{{ $order->order_number }}</div>
+                        <div class="via-tag">{{ $showPrices ? 'Via com valores' : 'Via de entrega' }}</div>
+                    </td>
+                </tr>
+            </table>
+
+            {{-- Itens --}}
+            <table class="items">
+                <thead>
                     <tr>
-                        <td class="qty row-h">{{ $fmtQty($item->quantity) }}</td>
-                        <td>{{ $item->product_name }}</td>
                         @if ($showPrices)
-                            <td class="money">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
-                            <td class="money">R$ {{ number_format($item->subtotal, 2, ',', '.') }}</td>
+                            <th style="width: 19%;">Quantidade</th>
+                            <th style="width: 39%;">Referência</th>
+                            <th style="width: 21%;">Valor unitário</th>
+                            <th style="width: 21%;">Valor total</th>
+                        @else
+                            <th style="width: 19%;">Quantidade</th>
+                            <th style="width: 81%;">Referência</th>
                         @endif
                     </tr>
-                @endforeach
+                </thead>
+                <tbody>
+                    @foreach ($order->items as $item)
+                        <tr>
+                            <td class="qty">{{ $fmtQty($item->quantity) }}</td>
+                            <td class="ref">{{ $item->product_name }}</td>
+                            @if ($showPrices)
+                                <td class="money">R$ {{ number_format($item->unit_price, 2, ',', '.') }}</td>
+                                <td class="money">R$ {{ number_format($item->subtotal, 2, ',', '.') }}</td>
+                            @endif
+                        </tr>
+                    @endforeach
 
-                @for ($i = 0; $i < $filler; $i++)
+                    @for ($i = 0; $i < $filler; $i++)
+                        <tr>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            @if ($showPrices)
+                                <td>&nbsp;</td>
+                                <td>&nbsp;</td>
+                            @endif
+                        </tr>
+                    @endfor
+
                     <tr>
-                        <td class="row-h">&nbsp;</td>
-                        <td>&nbsp;</td>
+                        <td class="tot-lbl">Total de peças</td>
                         @if ($showPrices)
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
+                            <td class="tot-val">{{ $fmtQty($totalQty) }}</td>
+                            <td class="tot-lbl">Total a pagar</td>
+                            <td class="tot-money">R$ {{ number_format($order->total, 2, ',', '.') }}</td>
+                        @else
+                            <td class="tot-val">{{ $fmtQty($totalQty) }}</td>
                         @endif
                     </tr>
-                @endfor
 
-                {{-- Totais --}}
+                    <tr>
+                        <td class="receb">Recebido por</td>
+                        <td colspan="{{ $showPrices ? 3 : 1 }}">&nbsp;</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {{-- Rodapé: marca Fonte Pro (discreta) --}}
+            <table class="foot">
                 <tr>
-                    <td class="gray">TOTAL DE<br>PEÇAS</td>
-                    @if ($showPrices)
-                        <td class="center">{{ $fmtQty($totalQty) }}</td>
-                        <td class="gray">TOTAL A<br>PAGAR</td>
-                        <td class="money">R$ {{ number_format($order->total, 2, ',', '.') }}</td>
-                    @else
-                        <td class="center">{{ $fmtQty($totalQty) }}</td>
-                    @endif
+                    <td class="foot-cut">{{ $loop->first ? 'Dobre e corte na linha tracejada' : '' }}</td>
+                    <td class="foot-brand">
+                        @if ($fpLogo)
+                            <img src="{{ $fpLogo }}" alt="">
+                        @endif
+                        <span class="fp">FONTE PRO</span>
+                    </td>
                 </tr>
+            </table>
 
-                {{-- Recebido por --}}
-                <tr>
-                    <td class="recebido">RECEBIDO POR:</td>
-                    <td colspan="{{ $showPrices ? 3 : 1 }}">&nbsp;</td>
-                </tr>
-            </tbody>
-        </table>
-
-    </div>
-
-    @if ($showPrices)
-        <div class="fold"><span>dobre e corte aqui</span></div>
-    @endif
-
+        </td>
+    </tr>
 @endforeach
+</table>
 
 </body>
 </html>
