@@ -29,7 +29,7 @@ class WhatsAppBotController extends Controller
 
         $numbers = BotAllowedNumber::fromCompany(Auth::id())
             ->orderBy('name')
-            ->get(['id', 'name', 'phone']);
+            ->get(['id', 'name', 'phone', 'notifications_enabled']);
 
         $notification = BotNotification::fromCompany(Auth::id())
             ->where('type', BotNotification::TYPE_DAILY_SALES)
