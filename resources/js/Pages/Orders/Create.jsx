@@ -20,7 +20,6 @@ export default function OrderCreate({ customers, products }) {
         delivery_zip_code:     '',
         items:                 [],
         notes:                 '',
-        stock_action:          'deduct',
         force:                 false,
     });
 
@@ -35,8 +34,21 @@ export default function OrderCreate({ customers, products }) {
         setShowStock(true);
     }
 
-    function submit(action, force) {
-        form.transform(d => ({ ...d, stock_action: action, force }));
+    // Ações escolhidas no modal, por índice do item
+    const [stockActions, setStockActions] = useState({});
+
+    function submit(actions, force) {
+        setStockActions(actions);
+
+        form.transform(d => ({
+            ...d,
+            force,
+            items: (d.items ?? []).map((item, index) => ({
+                ...item,
+                stock_action: actions[index] ?? 'none',
+            })),
+        }));
+
         form.post(route('orders.store'), {
             preserveScroll: true,
             onError: (errs) => {
@@ -45,7 +57,7 @@ export default function OrderCreate({ customers, products }) {
                 if (errs.stock_shortage) {
                     try {
                         const parsed = JSON.parse(errs.stock_shortage);
-                        setShortage({ action, products: parsed.products ?? [], materials: parsed.materials ?? [] });
+                        setShortage({ products: parsed.products ?? [], materials: parsed.materials ?? [] });
                     } catch {
                         setShortage(null);
                     }
@@ -86,16 +98,18 @@ export default function OrderCreate({ customers, products }) {
 
             <StockActionModal
                 show={showStock}
+                items={data.items}
+                products={products}
                 loading={processing}
                 onCancel={() => setShowStock(false)}
-                onConfirm={(action) => submit(action, false)}
+                onConfirm={(actions) => submit(actions, false)}
             />
 
             <ShortageModal
                 shortage={shortage}
                 loading={processing}
                 onCancel={() => setShortage(null)}
-                onContinue={() => submit(shortage.action, true)}
+                onContinue={() => submit(stockActions, true)}
             />
         </AppLayout>
     );

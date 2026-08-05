@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import OrderForm from '@/Components/Orders/OrderForm';
 import ShortageModal from '@/Components/Orders/ShortageModal';
+import StockActionModal from '@/Components/Orders/StockActionModal';
 
 export default function OrderEdit({ order, customers, products }) {
     const form = useForm({
@@ -28,11 +29,29 @@ export default function OrderEdit({ order, customers, products }) {
 
     const { data, setData, errors, processing } = form;
     const [shortage, setShortage] = useState(null);
+    const [showStock, setShowStock] = useState(false);
+    const [stockActions, setStockActions] = useState({});
 
-    function submit(force) {
-        form.transform(d => ({ ...d, force }));
+    // Ações já salvas, por produto — pré-preenchem o modal na edição
+    const savedActions = Object.fromEntries(
+        (order.items ?? []).map(it => [it.product_id, it.stock_action ?? 'none'])
+    );
+
+    function submit(actions, force) {
+        setStockActions(actions);
+
+        form.transform(d => ({
+            ...d,
+            force,
+            items: (d.items ?? []).map((item, index) => ({
+                ...item,
+                stock_action: actions[index] ?? 'none',
+            })),
+        }));
+
         form.put(route('orders.update', order.id), {
             onError: (errs) => {
+                setShowStock(false);
                 if (errs.stock_shortage) {
                     try {
                         const parsed = JSON.parse(errs.stock_shortage);
@@ -50,7 +69,8 @@ export default function OrderEdit({ order, customers, products }) {
 
     function handleSubmit(e) {
         e.preventDefault();
-        submit(false);
+        if ((data.items ?? []).length === 0) return;
+        setShowStock(true);
     }
 
     return (
@@ -66,7 +86,7 @@ export default function OrderEdit({ order, customers, products }) {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Editar venda #{order.order_number}</h1>
                     <p className="text-sm text-gray-400 mt-1">
-                        Ao salvar, o estoque é reprocessado conforme os novos itens (mesma opção da venda).
+                        Ao salvar, você revisa a movimentação de cada item e o estoque é reprocessado.
                     </p>
                 </div>
             </div>
@@ -82,11 +102,21 @@ export default function OrderEdit({ order, customers, products }) {
                 submitLabel="Salvar alterações"
             />
 
+            <StockActionModal
+                show={showStock}
+                items={data.items}
+                products={products}
+                initial={savedActions}
+                loading={processing}
+                onCancel={() => setShowStock(false)}
+                onConfirm={(actions) => submit(actions, false)}
+            />
+
             <ShortageModal
                 shortage={shortage}
                 loading={processing}
                 onCancel={() => setShortage(null)}
-                onContinue={() => submit(true)}
+                onContinue={() => submit(stockActions, true)}
             />
         </AppLayout>
     );

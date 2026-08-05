@@ -77,7 +77,7 @@ class PaidOrderEditCheckTest extends TestCase
         ]);
 
         // baixa de 10 -> 90
-        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 10]], false);
+        $svc->apply($order, [['product_id' => $product->id, 'quantity' => 10, 'stock_action' => 'deduct']], false);
         $this->assertEquals(90, (float) $product->fresh()->current_stock);
         $this->assertSame(1, $order->movements()->count());
 
@@ -87,7 +87,7 @@ class PaidOrderEditCheckTest extends TestCase
         $this->assertSame(0, $order->movements()->count());
 
         // refaz com 5 -> 95
-        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 5]], false);
+        $svc->apply($order, [['product_id' => $product->id, 'quantity' => 5, 'stock_action' => 'deduct']], false);
         $this->assertEquals(95, (float) $product->fresh()->current_stock);
 
         fwrite(STDERR, "edit stock: baixa 10 (90) -> estorno (100) -> refaz 5 (95) = " . $product->fresh()->current_stock . "\n");
@@ -110,7 +110,7 @@ class PaidOrderEditCheckTest extends TestCase
             'company_id' => $company->id, 'order_number' => 1, 'issue_date' => now()->toDateString(),
             'items_count' => 1, 'total' => 80, 'stock_action' => 'deduct', 'payment_status' => 'pending', 'paid_total' => 0,
         ]);
-        $svc->apply($order, 'deduct', [['product_id' => $product->id, 'quantity' => 8]], false);
+        $svc->apply($order, [['product_id' => $product->id, 'quantity' => 8, 'stock_action' => 'deduct']], false);
         $this->assertEquals(92, (float) $product->fresh()->current_stock);
 
         // Simula o destroy: estorna + soft delete

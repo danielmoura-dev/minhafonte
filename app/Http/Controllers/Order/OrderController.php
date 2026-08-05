@@ -61,19 +61,23 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
 
-        $data   = $request->validated();
-        $action = $data['stock_action'];
-        $force  = (bool) ($data['force'] ?? false);
+        $data  = $request->validated();
+        $force = (bool) ($data['force'] ?? false);
 
+        // Cada item traz a própria ação de estoque (none | deduct | produce)
         $stockItems = collect($data['items'])
-            ->map(fn ($i) => ['product_id' => (int) $i['product_id'], 'quantity' => (float) $i['quantity']])
+            ->map(fn ($i) => [
+                'product_id'   => (int) $i['product_id'],
+                'quantity'     => (float) $i['quantity'],
+                'stock_action' => $i['stock_action'],
+            ])
             ->all();
 
         // Verifica estoque negativo antes de salvar. Se houver falta e o usuário
         // ainda não confirmou "continuar mesmo assim", devolve a lista como erro
         // de validação (mantém o formulário preenchido no front).
-        if ($action !== 'none' && ! $force) {
-            $shortages = $service->previewShortages($stockItems, $action);
+        if (! $force) {
+            $shortages = $service->previewShortages($stockItems);
             if (! empty($shortages['products']) || ! empty($shortages['materials'])) {
                 throw ValidationException::withMessages([
                     'stock_shortage' => json_encode($shortages),
@@ -87,7 +91,7 @@ class OrderController extends Controller
             ->keyBy('id');
 
         try {
-            $order = DB::transaction(function () use ($data, $action, $force, $products, $service) {
+            $order = DB::transaction(function () use ($data, $stockItems, $force, $products, $service) {
                 $nextNumber = (Order::fromCompany(Auth::id())->lockForUpdate()->max('order_number') ?? 0) + 1;
 
                 $items = collect($data['items'])->map(function ($item) use ($products) {
@@ -103,6 +107,7 @@ class OrderController extends Controller
                         'unit_price'    => $price,
                         'quantity'      => $qty,
                         'subtotal'      => round($price * $qty, 2),
+                        'stock_action'  => $item['stock_action'],
                     ];
                 });
 
@@ -121,7 +126,7 @@ class OrderController extends Controller
                     'delivery_zip_code'     => $data['delivery_zip_code'] ?? null,
                     'items_count'           => $items->count(),
                     'total'                 => round($items->sum('subtotal'), 2),
-                    'stock_action'          => $action,
+                    'stock_action'          => $service->summarize($stockItems),
                     'payment_status'        => 'pending',
                     'paid_total'            => 0,
                     'actor_name'            => $this->actorName(),
@@ -130,12 +135,7 @@ class OrderController extends Controller
 
                 $order->items()->createMany($items->all());
 
-                $service->apply(
-                    $order,
-                    $action,
-                    $items->map(fn ($i) => ['product_id' => $i['product_id'], 'quantity' => $i['quantity']])->all(),
-                    $force,
-                );
+                $service->apply($order, $stockItems, $force);
 
                 return $order;
             });
@@ -251,8 +251,15 @@ class OrderController extends Controller
                         'unit_price'    => $price,
                         'quantity'      => $qty,
                         'subtotal'      => round($price * $qty, 2),
+                        'stock_action'  => $item['stock_action'],
                     ];
                 });
+
+                $stockItems = $items->map(fn ($i) => [
+                    'product_id'   => $i['product_id'],
+                    'quantity'     => $i['quantity'],
+                    'stock_action' => $i['stock_action'],
+                ])->all();
 
                 $order->update([
                     'customer_id'           => $data['customer_id'],
@@ -267,34 +274,28 @@ class OrderController extends Controller
                     'delivery_zip_code'     => $data['delivery_zip_code'] ?? null,
                     'items_count'           => $items->count(),
                     'total'                 => round($items->sum('subtotal'), 2),
+                    'stock_action'          => $service->summarize($stockItems),
                     'notes'                 => $data['notes'] ?? null,
                 ]);
 
                 $order->items()->delete();
                 $order->items()->createMany($items->all());
 
-                // Reprocessa o estoque: estorna o que a venda tinha movimentado e
-                // refaz com os novos itens, mantendo a mesma opção (baixa/produção).
-                if ($order->stock_action !== 'none') {
-                    $stockItems = $items->map(fn ($i) => [
-                        'product_id' => $i['product_id'],
-                        'quantity'   => $i['quantity'],
-                    ])->all();
+                // Reprocessa o estoque: estorna tudo o que a venda tinha movimentado
+                // e refaz conforme a ação atual de cada item.
+                $service->reverse($order);
 
-                    $service->reverse($order);
-
-                    if (! $force) {
-                        $shortages = $service->previewShortages($stockItems, $order->stock_action);
-                        if (! empty($shortages['products']) || ! empty($shortages['materials'])) {
-                            // Rola a transação de volta e devolve a lista para o modal de aviso.
-                            throw ValidationException::withMessages([
-                                'stock_shortage' => json_encode($shortages),
-                            ]);
-                        }
+                if (! $force) {
+                    $shortages = $service->previewShortages($stockItems);
+                    if (! empty($shortages['products']) || ! empty($shortages['materials'])) {
+                        // Rola a transação de volta e devolve a lista para o modal de aviso.
+                        throw ValidationException::withMessages([
+                            'stock_shortage' => json_encode($shortages),
+                        ]);
                     }
-
-                    $service->apply($order, $order->stock_action, $stockItems, $force);
                 }
+
+                $service->apply($order, $stockItems, $force);
             });
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage() . ' Ative a opção de continuar mesmo com estoque negativo.');
@@ -333,10 +334,9 @@ class OrderController extends Controller
         $number = $order->order_number;
 
         DB::transaction(function () use ($order, $service) {
-            // Devolve ao estoque o que a venda tinha movimentado.
-            if ($order->stock_action !== 'none') {
-                $service->reverse($order);
-            }
+            // Devolve ao estoque o que a venda tinha movimentado
+            // (no-op quando não houve movimentação).
+            $service->reverse($order);
 
             $order->delete();
         });
@@ -381,6 +381,7 @@ class OrderController extends Controller
     {
         return Product::fromCompany(Auth::id())
             ->where('active', true)
+            ->withCount('recipeItems')
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'default_price', 'current_stock', 'controls_stock', 'photo'])
             ->map(fn ($p) => [
@@ -390,6 +391,7 @@ class OrderController extends Controller
                 'default_price'  => (float) $p->default_price,
                 'current_stock'  => (float) $p->current_stock,
                 'controls_stock' => (bool) $p->controls_stock,
+                'has_recipe'     => $p->recipe_items_count > 0,
                 'photo'          => $p->photo,
             ])
             ->values();

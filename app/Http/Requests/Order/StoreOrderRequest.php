@@ -32,8 +32,8 @@ class StoreOrderRequest extends FormRequest
             'items.*.product_id'    => ['required', Rule::exists('products', 'id')->where('company_id', Auth::id())],
             'items.*.quantity'      => ['required', 'numeric', 'gt:0'],
             'items.*.unit_price'    => ['required', 'numeric', 'min:0'],
+            'items.*.stock_action'  => ['required', Rule::in(['none', 'deduct', 'produce'])],
 
-            'stock_action'          => ['required', Rule::in(['none', 'deduct', 'produce'])],
             'force'                 => ['boolean'],
             'notes'                 => ['nullable', 'string', 'max:1000'],
         ];
@@ -51,7 +51,9 @@ class StoreOrderRequest extends FormRequest
             'items.*.product_id.exists'   => 'Um dos produtos selecionados é inválido.',
             'items.*.quantity.required'   => 'Informe a quantidade em todos os itens.',
             'items.*.quantity.gt'         => 'A quantidade deve ser maior que zero.',
-            'items.*.unit_price.required' => 'Informe o valor unitário em todos os itens.',
+            'items.*.unit_price.required'   => 'Informe o valor unitário em todos os itens.',
+            'items.*.stock_action.required' => 'Escolha a movimentação de estoque de cada item.',
+            'items.*.stock_action.in'       => 'Movimentação de estoque inválida.',
         ];
     }
 }

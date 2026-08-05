@@ -93,7 +93,13 @@ export default function OrderShow({ order }) {
                                                 </div>
                                                 <div>
                                                     <p className="font-medium text-gray-900">{item.product_name}</p>
-                                                    {item.product_code && <p className="text-xs text-gray-400">Cód. {item.product_code}</p>}
+                                                    <p className="text-xs text-gray-400">
+                                                        {item.product_code && <>Cód. {item.product_code} · </>}
+                                                        {{
+                                                            deduct:  'baixa no estoque',
+                                                            produce: 'produzido e baixado',
+                                                        }[item.stock_action] ?? 'sem movimentação'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
