@@ -185,6 +185,8 @@ Route::middleware('auth')->group(function () {
     Route::get('recebimentos/{order}', [ReceivableController::class, 'show'])->name('receivables.show');
     Route::post('recebimentos/{order}/pagamento', [ReceivableController::class, 'storePayment'])
         ->name('receivables.payments.store');
+    Route::put('recebimentos/pagamentos/{payment}', [ReceivableController::class, 'updatePayment'])
+        ->name('receivables.payments.update');
     Route::post('recebimentos/pagamentos/{payment}/comprovante', [ReceivableController::class, 'storeReceipt'])
         ->name('receivables.receipt.store');
     Route::delete('recebimentos/pagamentos/{payment}/comprovante', [ReceivableController::class, 'destroyReceipt'])

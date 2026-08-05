@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Plus, Wallet, CheckCircle2, Paperclip, FileText, Image as ImageIcon, X } from 'lucide-react';
+import { ArrowLeft, Plus, Wallet, CheckCircle2, Paperclip, FileText, Image as ImageIcon, X, Pencil } from 'lucide-react';
 import FileDropzone from '@/Components/UI/FileDropzone';
 
 function formatCurrency(value) {
@@ -30,6 +30,104 @@ function AmountInput({ value, onChange }) {
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">R$</span>
             <input type="text" value={display} onChange={handle} placeholder="0,00"
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition" />
+        </div>
+    );
+}
+
+/** Corrige um pagamento já lançado (valor digitado errado, forma, conta, data). */
+function EditPaymentModal({ payment, bankAccounts, onClose }) {
+    const paidAt = payment ? new Date(payment.paid_at) : null;
+
+    const { data, setData, put, processing, errors, transform } = useForm({
+        amount:          payment ? parseFloat(payment.amount) : '',
+        method:          payment?.method ?? 'cash',
+        bank_account_id: payment?.bank_account_id ?? '',
+        paid_at_date:    paidAt ? paidAt.toISOString().slice(0, 10) : '',
+        paid_at_time:    paidAt ? paidAt.toTimeString().slice(0, 8) : '00:00:00',
+        notes:           payment?.notes ?? '',
+    });
+
+    if (!payment) return null;
+
+    function submit(e) {
+        e.preventDefault();
+        transform(d => ({ ...d, paid_at: `${d.paid_at_date} ${d.paid_at_time || '00:00:00'}` }));
+        put(route('receivables.payments.update', payment.id), {
+            preserveScroll: true,
+            onSuccess: onClose,
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+            <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base font-semibold text-gray-900">Corrigir pagamento</h3>
+                    <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
+                        <X size={16} />
+                    </button>
+                </div>
+                <p className="text-sm text-gray-500 mb-5">
+                    O saldo e a situação da venda são recalculados automaticamente.
+                </p>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Valor <span className="text-red-500">*</span></label>
+                        <AmountInput value={data.amount} onChange={v => setData('amount', v)} />
+                        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Forma de pagamento</label>
+                        <select value={data.method} onChange={e => setData('method', e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition">
+                            <option value="cash">Espécie (Dinheiro)</option>
+                            <option value="deposit">Depósito (Pix)</option>
+                            <option value="cheque">Cheque</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Conta de destino</label>
+                        <select value={data.bank_account_id ?? ''} onChange={e => setData('bank_account_id', e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition">
+                            <option value="">Sem conta vinculada</option>
+                            {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.bank ? ` — ${a.bank}` : ''}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Data</label>
+                            <input type="date" value={data.paid_at_date} onChange={e => setData('paid_at_date', e.target.value)}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Hora</label>
+                            <input type="time" step="1" value={data.paid_at_time} onChange={e => setData('paid_at_time', e.target.value)}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Observação</label>
+                        <textarea value={data.notes ?? ''} onChange={e => setData('notes', e.target.value)} rows={2}
+                            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
+                    </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                    <button type="button" onClick={onClose} disabled={processing}
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-60">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={processing}
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition disabled:opacity-60">
+                        {processing ? 'Salvando...' : 'Salvar correção'}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }
@@ -124,6 +222,7 @@ function ReceiptCell({ payment, onAttach }) {
 export default function ReceivableShow({ order, bankAccounts }) {
     const now = new Date();
     const [receiptFor, setReceiptFor] = useState(null);
+    const [editingPayment, setEditingPayment] = useState(null);
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         amount:          '',
         method:          'cash',
@@ -287,7 +386,22 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                             <td className="px-3 py-3">
                                                 <ReceiptCell payment={p} onAttach={setReceiptFor} />
                                             </td>
-                                            <td className="px-5 py-3 text-right font-semibold text-green-600">{formatCurrency(p.amount)}</td>
+                                            <td className="px-5 py-3 text-right">
+                                                {isPaid ? (
+                                                    <span className="font-semibold text-green-600" title="Venda quitada — não é possível alterar">
+                                                        {formatCurrency(p.amount)}
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setEditingPayment(p)}
+                                                        className="font-semibold text-green-600 hover:text-primary-700 hover:underline decoration-dotted underline-offset-4 transition inline-flex items-center gap-1"
+                                                        title="Clique para corrigir este pagamento"
+                                                    >
+                                                        {formatCurrency(p.amount)}
+                                                        <Pencil size={12} className="text-gray-300" strokeWidth={2} />
+                                                    </button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {order.payments.some(p => p.notes) && (
@@ -305,6 +419,12 @@ export default function ReceivableShow({ order, bankAccounts }) {
             </div>
 
             <ReceiptModal payment={receiptFor} onClose={() => setReceiptFor(null)} />
+
+            <EditPaymentModal
+                payment={editingPayment}
+                bankAccounts={bankAccounts}
+                onClose={() => setEditingPayment(null)}
+            />
         </AppLayout>
     );
 }

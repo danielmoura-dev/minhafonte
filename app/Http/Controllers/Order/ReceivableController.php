@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -125,6 +126,57 @@ class ReceivableController extends Controller
         );
 
         return back()->with('success', 'Pagamento registrado com sucesso!');
+    }
+
+    /**
+     * Corrige um pagamento já lançado (ex.: valor digitado errado).
+     * Permitido apenas enquanto a venda não estiver totalmente paga.
+     */
+    public function updatePayment(Request $request, OrderPayment $payment): RedirectResponse
+    {
+        abort_unless($payment->company_id === Auth::id(), 403);
+
+        $order = $payment->order;   // null se a venda foi excluída
+        abort_unless($order, 404);
+
+        if ($order->payment_status === 'paid') {
+            return back()->with('error', 'Esta venda já está totalmente paga — não é possível alterar os pagamentos.');
+        }
+
+        $data = $request->validate([
+            'amount'          => ['required', 'numeric', 'gt:0'],
+            'method'          => ['required', Rule::in(['deposit', 'cash', 'cheque'])],
+            'bank_account_id' => ['nullable', Rule::exists('bank_accounts', 'id')->where('company_id', Auth::id())],
+            'paid_at'         => ['required', 'date'],
+            'notes'           => ['nullable', 'string', 'max:1000'],
+        ], [
+            'amount.required' => 'Informe o valor do pagamento.',
+            'amount.gt'       => 'O valor deve ser maior que zero.',
+            'method.required' => 'Selecione a forma de pagamento.',
+        ]);
+
+        $oldAmount = (float) $payment->amount;
+
+        $payment->update([
+            'amount'          => round((float) $data['amount'], 2),
+            'method'          => $data['method'],
+            'bank_account_id' => $data['bank_account_id'] ?? null,
+            'paid_at'         => $data['paid_at'],
+            'notes'           => $data['notes'] ?? null,
+        ]);
+
+        // Reflete o novo valor no saldo e no status da venda
+        $order->recalculatePayment();
+
+        AuditService::log(
+            event:       'order.payment_updated',
+            auditable:   $order->refresh(),
+            oldValues:   ['amount' => $oldAmount],
+            newValues:   ['amount' => (float) $payment->amount, 'payment_status' => $order->payment_status],
+            description: "Pagamento da Venda #{$order->order_number} corrigido de R$ {$oldAmount} para R$ {$payment->amount}.",
+        );
+
+        return back()->with('success', 'Pagamento corrigido com sucesso!');
     }
 
     /**
