@@ -9,7 +9,10 @@ function formatCurrency(value) {
 }
 function formatDateTime(value) {
     if (!value) return '—';
-    return new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(value).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
 }
 
 const METHOD = { cash: 'Espécie (Dinheiro)', deposit: 'Depósito (Pix)', cheque: 'Cheque' };
@@ -126,7 +129,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
         method:          'cash',
         bank_account_id: '',
         paid_at_date:    now.toISOString().slice(0, 10),
-        paid_at_time:    now.toTimeString().slice(0, 5),
+        paid_at_time:    now.toTimeString().slice(0, 8),
         notes:           '',
         receipt:         null,
     });
@@ -137,7 +140,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
 
     function handleSubmit(e) {
         e.preventDefault();
-        transform(d => ({ ...d, paid_at: `${d.paid_at_date} ${d.paid_at_time || '00:00'}` }));
+        transform(d => ({ ...d, paid_at: `${d.paid_at_date} ${d.paid_at_time || '00:00:00'}` }));
         post(route('receivables.payments.store', order.id), {
             forceFormData: true,
             preserveScroll: true,
@@ -225,7 +228,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Hora</label>
-                                        <input type="time" value={data.paid_at_time} onChange={e => setData('paid_at_time', e.target.value)}
+                                        <input type="time" step="1" value={data.paid_at_time} onChange={e => setData('paid_at_time', e.target.value)}
                                             className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
                                     </div>
                                 </div>

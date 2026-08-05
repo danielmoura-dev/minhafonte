@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, X, Loader2, ZoomIn } from 'lucide-react';
 import { compressImage } from '@/utils/compressImage';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
@@ -20,7 +20,9 @@ export default function FileDropzone({ file, onChange, error, hint }) {
     const inputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
     const [working, setWorking] = useState(false);
-    const [preview, setPreview] = useState(null);
+    const [preview, setPreview] = useState(null);   // URL da imagem (null se for PDF)
+    const [fileUrl, setFileUrl] = useState(null);   // URL do arquivo (imagem ou PDF)
+    const [zoomed, setZoomed] = useState(false);
 
     async function accept(picked) {
         if (!picked) return;
@@ -33,10 +35,24 @@ export default function FileDropzone({ file, onChange, error, hint }) {
                 ? await compressImage(picked, { maxWidth: 1400, quality: 0.72 })
                 : picked;
 
-            setPreview(isImage ? URL.createObjectURL(finalFile) : null);
+            const url = URL.createObjectURL(finalFile);
+            setFileUrl(url);
+            setPreview(isImage ? url : null);
             onChange(finalFile);
         } finally {
             setWorking(false);
+        }
+    }
+
+    /** Ampliar: imagem abre num modal; PDF abre em nova aba. */
+    function openFile(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (preview) {
+            setZoomed(true);
+        } else if (fileUrl) {
+            window.open(fileUrl, '_blank', 'noopener');
         }
     }
 
@@ -49,6 +65,8 @@ export default function FileDropzone({ file, onChange, error, hint }) {
     function clear(e) {
         e.stopPropagation();
         setPreview(null);
+        setFileUrl(null);
+        setZoomed(false);
         onChange(null);
         if (inputRef.current) inputRef.current.value = '';
     }
@@ -75,16 +93,28 @@ export default function FileDropzone({ file, onChange, error, hint }) {
                     </>
                 ) : file ? (
                     <>
-                        {preview ? (
-                            <img src={preview} alt="" className="w-10 h-10 rounded object-cover border border-gray-200 shrink-0" />
-                        ) : (
-                            <div className="w-10 h-10 rounded bg-red-50 flex items-center justify-center shrink-0">
-                                <FileText size={18} className="text-red-500" strokeWidth={1.75} />
-                            </div>
-                        )}
+                        <button
+                            type="button"
+                            onClick={openFile}
+                            title={preview ? 'Clique para ampliar' : 'Clique para abrir o PDF'}
+                            className="relative w-12 h-12 rounded border border-gray-200 overflow-hidden shrink-0 group cursor-zoom-in"
+                        >
+                            {preview ? (
+                                <img src={preview} alt="Comprovante" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="w-full h-full bg-red-50 flex items-center justify-center">
+                                    <FileText size={18} className="text-red-500" strokeWidth={1.75} />
+                                </span>
+                            )}
+                            <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <ZoomIn size={16} className="text-white" strokeWidth={2} />
+                            </span>
+                        </button>
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
-                            <p className="text-xs text-gray-400">{humanSize(file.size)} · clique para trocar</p>
+                            <p className="text-xs text-gray-400">
+                                {humanSize(file.size)} · clique na miniatura para {preview ? 'ampliar' : 'abrir'} · aqui para trocar
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -117,6 +147,29 @@ export default function FileDropzone({ file, onChange, error, hint }) {
             </div>
 
             {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+
+            {/* Ampliação do comprovante (antes mesmo de salvar) */}
+            {zoomed && preview && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    onClick={() => setZoomed(false)}
+                >
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setZoomed(false); }}
+                        className="absolute top-4 right-4 text-white/70 hover:text-white transition"
+                        title="Fechar"
+                    >
+                        <X size={28} />
+                    </button>
+                    <img
+                        src={preview}
+                        alt="Comprovante"
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-w-full max-h-[90vh] rounded-lg object-contain shadow-2xl"
+                    />
+                </div>
+            )}
         </div>
     );
 }
