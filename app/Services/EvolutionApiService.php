@@ -102,6 +102,17 @@ class EvolutionApiService
     }
 
     /**
+     * Envia um áudio (arquivo local) como mensagem de voz.
+     */
+    public function sendAudio(string $instanceName, string $number, string $filePath): void
+    {
+        $this->client()->post("/message/sendWhatsAppAudio/{$instanceName}", [
+            'number' => $number,
+            'audio'  => base64_encode(file_get_contents($filePath)),
+        ])->throw();
+    }
+
+    /**
      * Baixa a mídia (áudio) de uma mensagem em base64.
      */
     public function getMediaBase64(string $instanceName, string $messageId): ?array

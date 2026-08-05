@@ -5,6 +5,7 @@ import axios from 'axios';
 import {
     Bot, QrCode, Smartphone, Trash2, Plus, Loader2,
     MessageCircle, Mic, ShieldCheck, AlertTriangle,
+    Bell, BellOff, Clock, Send, Volume2,
 } from 'lucide-react';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
@@ -243,18 +244,36 @@ function AllowedNumbersCard({ allowedNumbers }) {
             ) : (
                 <ul className="divide-y divide-gray-50 border border-gray-100 rounded-lg">
                     {allowedNumbers.map(n => (
-                        <li key={n.id} className="flex items-center justify-between px-4 py-2.5">
-                            <div>
-                                <p className="text-sm font-medium text-gray-900">{n.name}</p>
+                        <li key={n.id} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{n.name}</p>
                                 <p className="text-xs text-gray-400">{formatPhoneDisplay(n.phone)}</p>
                             </div>
-                            <button
-                                onClick={() => setDeleting(n)}
-                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                                title="Remover"
-                            >
-                                <Trash2 size={15} strokeWidth={1.75} />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                    onClick={() => router.patch(route('bot.numbers.toggle-notifications', n.id), {}, { preserveScroll: true })}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                                        n.notifications_enabled
+                                            ? 'text-primary-700 bg-primary-50 hover:bg-primary-100'
+                                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                    title={n.notifications_enabled
+                                        ? 'Recebendo notificações — clique para desativar'
+                                        : 'Sem notificações — clique para ativar'}
+                                >
+                                    {n.notifications_enabled
+                                        ? <Bell size={13} strokeWidth={2} />
+                                        : <BellOff size={13} strokeWidth={2} />}
+                                    {n.notifications_enabled ? 'Notificações' : 'Desativadas'}
+                                </button>
+                                <button
+                                    onClick={() => setDeleting(n)}
+                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                                    title="Remover"
+                                >
+                                    <Trash2 size={15} strokeWidth={1.75} />
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>
@@ -272,10 +291,163 @@ function AllowedNumbersCard({ allowedNumbers }) {
     );
 }
 
+const WEEKDAYS = [
+    { value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' },
+    { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' },
+    { value: 7, label: 'Dom' },
+];
+
+/** Notificações automáticas: resumo diário de vendas. */
+function NotificationsCard({ notification, audioFiles, recipientsCount }) {
+    const { data, setData, put, processing, errors } = useForm({
+        enabled:    notification?.enabled ?? false,
+        send_time:  notification?.send_time ?? '19:00',
+        days:       notification?.days ?? [1, 2, 3, 4, 5],
+        audio_file: notification?.audio_file ?? '',
+    });
+
+    const [testing, setTesting] = useState(false);
+
+    function toggleDay(day) {
+        setData('days', data.days.includes(day)
+            ? data.days.filter(d => d !== day)
+            : [...data.days, day].sort((a, b) => a - b));
+    }
+
+    function save(e) {
+        e.preventDefault();
+        put(route('bot.notification.save'), { preserveScroll: true });
+    }
+
+    function sendTest() {
+        setTesting(true);
+        router.post(route('bot.notification.test'), {}, {
+            preserveScroll: true,
+            onFinish: () => setTesting(false),
+        });
+    }
+
+    return (
+        <form onSubmit={save} className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-1">
+                <Bell size={17} className="text-primary-500" strokeWidth={1.75} />
+                <h2 className="text-sm font-semibold text-gray-700">Notificações automáticas</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-5">
+                O bot envia sozinho, no horário escolhido, para os números com notificações ativadas
+                {recipientsCount > 0 ? ` (${recipientsCount} no momento).` : '.'}
+            </p>
+
+            {/* Resumo diário */}
+            <div className={`rounded-xl border p-4 transition ${data.enabled ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200'}`}>
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                        type="checkbox"
+                        checked={data.enabled}
+                        onChange={e => setData('enabled', e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span>
+                        <span className="block text-sm font-semibold text-gray-800">Resumo de vendas do dia</span>
+                        <span className="block text-xs text-gray-500 mt-0.5">
+                            Envia o áudio escolhido e, em seguida, o resumo das vendas e os itens vendidos.
+                        </span>
+                    </span>
+                </label>
+
+                {data.enabled && (
+                    <div className="mt-4 pl-7 flex flex-col gap-4">
+                        {/* Horário */}
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                                <Clock size={12} className="inline mr-1 -mt-0.5" strokeWidth={2} />
+                                Horário do envio
+                            </label>
+                            <input
+                                type="time"
+                                value={data.send_time}
+                                onChange={e => setData('send_time', e.target.value)}
+                                className="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                            />
+                            {errors.send_time && <p className="text-red-500 text-xs mt-1">{errors.send_time}</p>}
+                        </div>
+
+                        {/* Dias */}
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1.5">Dias da semana</label>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {WEEKDAYS.map(d => (
+                                    <button
+                                        key={d.value}
+                                        type="button"
+                                        onClick={() => toggleDay(d.value)}
+                                        className={`w-11 py-1.5 rounded-lg text-xs font-medium border transition ${
+                                            data.days.includes(d.value)
+                                                ? 'border-primary-500 bg-primary-600 text-white'
+                                                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        {d.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {errors.days && <p className="text-red-500 text-xs mt-1">{errors.days}</p>}
+                        </div>
+
+                        {/* Áudio */}
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                                <Volume2 size={12} className="inline mr-1 -mt-0.5" strokeWidth={2} />
+                                Áudio de abertura
+                            </label>
+                            <select
+                                value={data.audio_file ?? ''}
+                                onChange={e => setData('audio_file', e.target.value)}
+                                className="w-full max-w-xs px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+                            >
+                                <option value="">Não enviar áudio</option>
+                                {audioFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                            <p className="text-[11px] text-gray-400 mt-1">
+                                {audioFiles.length === 0
+                                    ? 'Nenhum arquivo na pasta audios/ do projeto.'
+                                    : 'Arquivos da pasta audios/ do projeto.'}
+                            </p>
+                            {errors.audio_file && <p className="text-red-500 text-xs mt-1">{errors.audio_file}</p>}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-5 flex-wrap">
+                <button
+                    type="button"
+                    onClick={sendTest}
+                    disabled={testing}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-60"
+                    title="Envia o resumo de hoje agora, para conferir o formato"
+                >
+                    {testing ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} strokeWidth={2} />}
+                    {testing ? 'Enviando...' : 'Enviar agora (teste)'}
+                </button>
+
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-60"
+                >
+                    {processing ? 'Salvando...' : 'Salvar notificações'}
+                </button>
+            </div>
+        </form>
+    );
+}
+
 function HowToUseCard() {
     const examples = [
+        { icon: MessageCircle, text: '"Quantas vendas foram feitas hoje?"' },
+        { icon: Mic, text: '"Quanto a Padaria Central ainda está devendo?" (por áudio)' },
         { icon: MessageCircle, text: '"Qual o estoque do garrafão 20L?"' },
-        { icon: Mic, text: '"Quantos fardos de garrafinha o Rômulo já vendeu ao todo?" (por áudio)' },
         { icon: MessageCircle, text: '"Quanto tenho de comissão pendente esse mês?"' },
         { icon: MessageCircle, text: '"O que está precisando repor no estoque?"' },
     ];
@@ -304,7 +476,7 @@ function HowToUseCard() {
     );
 }
 
-export default function SettingsBot({ bot, allowedNumbers, configured }) {
+export default function SettingsBot({ bot, allowedNumbers, configured, notification, audioFiles }) {
     const { flash } = usePage().props;
 
     return (
@@ -324,6 +496,11 @@ export default function SettingsBot({ bot, allowedNumbers, configured }) {
                 <div className="lg:col-span-2 flex flex-col gap-6">
                     <ConnectionCard bot={bot} configured={configured} />
                     <AllowedNumbersCard allowedNumbers={allowedNumbers} />
+                    <NotificationsCard
+                        notification={notification}
+                        audioFiles={audioFiles}
+                        recipientsCount={allowedNumbers.filter(n => n.notifications_enabled).length}
+                    />
                 </div>
                 <div>
                     <HowToUseCard />

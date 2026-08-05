@@ -11,7 +11,15 @@ class BotAllowedNumber extends Model
         'company_id',
         'phone',
         'name',
+        'notifications_enabled',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'notifications_enabled' => 'boolean',
+        ];
+    }
 
     public function company(): BelongsTo
     {

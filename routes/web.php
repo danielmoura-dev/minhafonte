@@ -211,6 +211,12 @@ Route::middleware('auth')->group(function () {
         ->name('bot.numbers.store');
     Route::delete('configuracoes/bot/numeros/{number}', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'destroyNumber'])
         ->name('bot.numbers.destroy');
+    Route::patch('configuracoes/bot/numeros/{number}/notificacoes', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'toggleNumberNotifications'])
+        ->name('bot.numbers.toggle-notifications');
+    Route::put('configuracoes/bot/notificacao', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'saveNotification'])
+        ->name('bot.notification.save');
+    Route::post('configuracoes/bot/notificacao/testar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'sendTestNotification'])
+        ->name('bot.notification.test');
 
     // Configurações — Contas Bancárias
     Route::resource('configuracoes/contas', BankAccountController::class)->parameters([

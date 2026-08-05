@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\BotAllowedNumber;
+use App\Models\BotNotification;
 use App\Models\WhatsappBot;
 use App\Services\AuditService;
+use App\Services\BotNotificationService;
 use App\Services\EvolutionApiService;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,11 +31,86 @@ class WhatsAppBotController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'phone']);
 
+        $notification = BotNotification::fromCompany(Auth::id())
+            ->where('type', BotNotification::TYPE_DAILY_SALES)
+            ->first();
+
         return Inertia::render('Settings/Bot', [
             'bot'            => $bot,
             'allowedNumbers' => $numbers,
             'configured'     => filled(config('services.evolution.api_key')) && filled(config('services.gemini.api_key')),
+            'notification'   => $notification,
+            'audioFiles'     => BotNotificationService::availableAudios(),
         ]);
+    }
+
+    /**
+     * Liga/desliga as notificações automáticas para um número autorizado.
+     */
+    public function toggleNumberNotifications(BotAllowedNumber $number): RedirectResponse
+    {
+        abort_unless($number->company_id === Auth::id(), 403);
+
+        $number->update(['notifications_enabled' => ! $number->notifications_enabled]);
+
+        return back()->with('success', $number->notifications_enabled
+            ? "{$number->name} passará a receber as notificações."
+            : "{$number->name} não receberá mais as notificações.");
+    }
+
+    /**
+     * Salva a configuração do resumo diário de vendas.
+     */
+    public function saveNotification(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'enabled'    => ['required', 'boolean'],
+            'send_time'  => ['required', 'date_format:H:i'],
+            'days'       => ['required', 'array', 'min:1'],
+            'days.*'     => ['integer', 'between:1,7'],
+            'audio_file' => ['nullable', 'string', Rule::in(BotNotificationService::availableAudios())],
+        ], [
+            'send_time.required'    => 'Informe o horário do envio.',
+            'send_time.date_format' => 'Horário inválido (use HH:MM).',
+            'days.required'         => 'Escolha ao menos um dia da semana.',
+            'days.min'              => 'Escolha ao menos um dia da semana.',
+            'audio_file.in'         => 'Áudio inválido.',
+        ]);
+
+        BotNotification::updateOrCreate(
+            ['company_id' => Auth::id(), 'type' => BotNotification::TYPE_DAILY_SALES],
+            [
+                'enabled'    => $data['enabled'],
+                'send_time'  => $data['send_time'],
+                'days'       => array_values(array_unique(array_map('intval', $data['days']))),
+                'audio_file' => $data['audio_file'] ?? null,
+            ],
+        );
+
+        AuditService::log(
+            event:       'whatsapp_bot.notification_saved',
+            description: 'Configuração do resumo diário de vendas atualizada.',
+        );
+
+        return back()->with('success', 'Notificação salva com sucesso!');
+    }
+
+    /**
+     * Dispara o resumo diário agora, para o usuário validar o formato.
+     */
+    public function sendTestNotification(BotNotificationService $service): RedirectResponse
+    {
+        $notification = BotNotification::fromCompany(Auth::id())
+            ->where('type', BotNotification::TYPE_DAILY_SALES)
+            ->first();
+
+        $sent = $service->sendDailySales(Auth::user(), $notification);
+
+        if ($sent === 0) {
+            return back()->with('error', 'Nada enviado: confira se o bot está conectado e se há números com notificações ativadas.');
+        }
+
+        return back()->with('success', "Resumo enviado agora para {$sent} número(s)!");
     }
 
     /**

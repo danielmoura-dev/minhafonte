@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\RawMaterial;
 use App\Models\Sale;
@@ -12,7 +14,8 @@ use App\Models\Seller;
  *
  * ÚNICA porta de acesso da IA aos dados: consultas prontas, read-only,
  * SEMPRE escopadas por company_id. A IA nunca monta SQL nem vê o banco.
- * Escopo liberado: vendas de vendedores (módulo comissão) + estoque.
+ * Escopo liberado: vendas a clientes (pedidos), comissões de vendedores
+ * (módulo comissão) e estoque.
  */
 class BotToolsService
 {
@@ -27,8 +30,41 @@ class BotToolsService
     {
         return [
             [
+                'name'        => 'sales_summary',
+                'description' => 'VENDAS (pedidos a clientes): resumo do período — quantidade de vendas, valor total, recebido, em aberto, lista das vendas (cliente, valor, situação) e itens vendidos. Sem datas = hoje. Use esta função quando perguntarem sobre "vendas".',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'date_from' => ['type' => 'string', 'description' => 'Opcional: data inicial YYYY-MM-DD (padrão: hoje)'],
+                        'date_to'   => ['type' => 'string', 'description' => 'Opcional: data final YYYY-MM-DD (padrão: hoje)'],
+                    ],
+                ],
+            ],
+            [
+                'name'        => 'search_customers',
+                'description' => 'Busca clientes pelo nome (parcial). Use para resolver o cliente citado antes de consultar as compras dele.',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'name' => ['type' => 'string', 'description' => 'Nome ou parte do nome do cliente'],
+                    ],
+                    'required' => ['name'],
+                ],
+            ],
+            [
+                'name'        => 'customer_summary',
+                'description' => 'Resumo financeiro de um cliente: total comprado, pago, em aberto, número de compras e as últimas vendas.',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'customer_id' => ['type' => 'integer', 'description' => 'ID do cliente (obtido em search_customers)'],
+                    ],
+                    'required' => ['customer_id'],
+                ],
+            ],
+            [
                 'name'        => 'search_sellers',
-                'description' => 'Busca vendedores pelo nome (parcial). Use para resolver o nome citado pelo usuário antes de consultar vendas.',
+                'description' => 'COMISSÃO: busca vendedores comissionados/revendedores pelo nome. Use apenas para o módulo de comissão, não para vendas a clientes.',
                 'parameters'  => [
                     'type'       => 'object',
                     'properties' => [
@@ -50,7 +86,7 @@ class BotToolsService
             ],
             [
                 'name'        => 'seller_sales_summary',
-                'description' => 'Resumo das vendas de um vendedor (módulo de comissão): número de vendas, quantidade total, valor total, recebido e pendente. Pode filtrar por produto e período.',
+                'description' => 'COMISSÃO: resumo das vendas de um vendedor no módulo de comissão (não confundir com as vendas a clientes): número de vendas, quantidade, valor total, recebido e pendente. Pode filtrar por produto e período.',
                 'parameters'  => [
                     'type'       => 'object',
                     'properties' => [
@@ -64,7 +100,7 @@ class BotToolsService
             ],
             [
                 'name'        => 'commissions_summary',
-                'description' => 'Resumo de comissões: total, pagas e pendentes. Pode filtrar por vendedor e período.',
+                'description' => 'COMISSÃO: resumo de comissões dos vendedores — total, pagas e pendentes. Pode filtrar por vendedor e período.',
                 'parameters'  => [
                     'type'       => 'object',
                     'properties' => [
@@ -109,6 +145,9 @@ class BotToolsService
     public function execute(string $name, array $args): array
     {
         return match ($name) {
+            'sales_summary'        => $this->salesSummary($args['date_from'] ?? null, $args['date_to'] ?? null),
+            'search_customers'     => $this->searchCustomers((string) ($args['name'] ?? '')),
+            'customer_summary'     => $this->customerSummary((int) ($args['customer_id'] ?? 0)),
             'search_sellers'       => $this->searchSellers((string) ($args['name'] ?? '')),
             'search_products'      => $this->searchProducts((string) ($args['name'] ?? '')),
             'seller_sales_summary' => $this->sellerSalesSummary(
@@ -171,6 +210,104 @@ class BotToolsService
             );
 
         return $matches->pluck('item')->take(10)->values();
+    }
+
+    /**
+     * Resumo das vendas a clientes (módulo de pedidos) no período.
+     * Reutilizado também pelo BotNotificationService (resumo diário).
+     */
+    public function salesSummary(?string $dateFrom = null, ?string $dateTo = null): array
+    {
+        $dateFrom = $dateFrom ?: now()->toDateString();
+        $dateTo   = $dateTo ?: $dateFrom;
+
+        $orders = Order::fromCompany($this->companyId)
+            ->with(['customer:id,name', 'items:id,order_id,product_name,quantity,subtotal'])
+            ->whereDate('issue_date', '>=', $dateFrom)
+            ->whereDate('issue_date', '<=', $dateTo)
+            ->orderBy('order_number')
+            ->get();
+
+        $statusLabel = ['paid' => 'pago', 'partial' => 'parcial', 'pending' => 'pendente'];
+
+        $items = $orders->flatMap(fn ($o) => $o->items)
+            ->groupBy('product_name')
+            ->map(fn ($group, $productName) => [
+                'product'  => $productName,
+                'quantity' => round((float) $group->sum('quantity'), 3),
+                'total'    => round((float) $group->sum('subtotal'), 2),
+            ])
+            ->sortByDesc('quantity')
+            ->values();
+
+        return [
+            'period'         => $dateFrom === $dateTo ? $dateFrom : "{$dateFrom} a {$dateTo}",
+            'sales_count'    => $orders->count(),
+            'total_value'    => round((float) $orders->sum('total'), 2),
+            'received_value' => round((float) $orders->sum('paid_total'), 2),
+            'open_value'     => round((float) $orders->sum(fn ($o) => (float) $o->total - (float) $o->paid_total), 2),
+            'sales'          => $orders->map(fn ($o) => [
+                'order_number' => $o->order_number,
+                'customer'     => $o->customer?->name ?? 'sem cliente',
+                'total'        => (float) $o->total,
+                'status'       => $statusLabel[$o->payment_status] ?? $o->payment_status,
+            ])->all(),
+            'items_sold'     => $items->all(),
+        ];
+    }
+
+    private function searchCustomers(string $name): array
+    {
+        if (trim($name) === '') {
+            return ['customers' => []];
+        }
+
+        $customers = Customer::fromCompany($this->companyId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'city', 'is_active']);
+
+        $matches = $this->fuzzyFilter($customers, $name, fn ($c) => $c->name);
+
+        return [
+            'customers' => $matches->map(fn ($c) => [
+                'id'     => $c->id,
+                'name'   => $c->name,
+                'phone'  => $c->phone,
+                'city'   => $c->city,
+                'active' => (bool) $c->is_active,
+            ])->all(),
+        ];
+    }
+
+    private function customerSummary(int $customerId): array
+    {
+        $customer = Customer::fromCompany($this->companyId)->find($customerId);
+        if (! $customer) {
+            return ['error' => 'Cliente não encontrado.'];
+        }
+
+        $orders = Order::fromCompany($this->companyId)
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('issue_date')
+            ->get();
+
+        $totalBought = round((float) $orders->sum('total'), 2);
+        $totalPaid   = round((float) $orders->sum('paid_total'), 2);
+        $statusLabel = ['paid' => 'pago', 'partial' => 'parcial', 'pending' => 'pendente'];
+
+        return [
+            'customer'     => $customer->name,
+            'orders_count' => $orders->count(),
+            'total_bought' => $totalBought,
+            'total_paid'   => $totalPaid,
+            'total_open'   => round($totalBought - $totalPaid, 2),
+            'last_sales'   => $orders->take(5)->map(fn ($o) => [
+                'order_number' => $o->order_number,
+                'date'         => $o->issue_date?->toDateString(),
+                'total'        => (float) $o->total,
+                'status'       => $statusLabel[$o->payment_status] ?? $o->payment_status,
+            ])->values()->all(),
+        ];
     }
 
     private function searchSellers(string $name): array
