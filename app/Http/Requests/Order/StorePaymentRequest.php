@@ -21,6 +21,7 @@ class StorePaymentRequest extends FormRequest
             'bank_account_id' => ['nullable', Rule::exists('bank_accounts', 'id')->where('company_id', Auth::id())],
             'paid_at'         => ['required', 'date'],
             'notes'           => ['nullable', 'string', 'max:1000'],
+            'receipt'         => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
         ];
     }
 

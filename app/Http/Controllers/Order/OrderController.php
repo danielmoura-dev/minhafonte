@@ -111,6 +111,7 @@ class OrderController extends Controller
                     'customer_id'           => $data['customer_id'],
                     'order_number'          => $nextNumber,
                     'issue_date'            => $data['issue_date'],
+                    'due_date'              => $data['due_date'] ?? null,
                     'delivery_street'       => $data['delivery_street'] ?? null,
                     'delivery_number'       => $data['delivery_number'] ?? null,
                     'delivery_complement'   => $data['delivery_complement'] ?? null,
@@ -256,6 +257,7 @@ class OrderController extends Controller
                 $order->update([
                     'customer_id'           => $data['customer_id'],
                     'issue_date'            => $data['issue_date'],
+                    'due_date'              => $data['due_date'] ?? null,
                     'delivery_street'       => $data['delivery_street'] ?? null,
                     'delivery_number'       => $data['delivery_number'] ?? null,
                     'delivery_complement'   => $data['delivery_complement'] ?? null,

@@ -9,6 +9,7 @@ export default function OrderEdit({ order, customers, products }) {
     const form = useForm({
         customer_id:           String(order.customer_id ?? ''),
         issue_date:            order.issue_date ? order.issue_date.slice(0, 10) : '',
+        due_date:              order.due_date ? order.due_date.slice(0, 10) : '',
         delivery_street:       order.delivery_street ?? '',
         delivery_number:       order.delivery_number ?? '',
         delivery_complement:   order.delivery_complement ?? '',

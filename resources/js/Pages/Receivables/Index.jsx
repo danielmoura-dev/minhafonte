@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { Search, Wallet, ChevronRight } from 'lucide-react';
+import { Search, Wallet, ChevronRight, AlertTriangle, CalendarClock } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 
 function formatCurrency(value) {
@@ -21,12 +21,46 @@ const STATUS = {
 
 const TABS = [
     { value: 'open', label: 'Em aberto' },
+    { value: 'due_today', label: 'Vence hoje' },
+    { value: 'overdue', label: 'Vencidos' },
     { value: 'pending', label: 'Pendentes' },
     { value: 'partial', label: 'Parciais' },
     { value: 'paid', label: 'Pagos' },
 ];
 
-export default function ReceivablesIndex({ orders, customers, filters }) {
+/** Selo de vencimento por linha. */
+function DueBadge({ order }) {
+    if (!order.due_date) {
+        return <span className="text-xs text-gray-300">—</span>;
+    }
+
+    const date = formatDate(order.due_date);
+    const days = order.days_until_due;
+
+    const style = {
+        overdue:   'text-red-700 bg-red-50',
+        due_today: 'text-amber-700 bg-amber-50',
+        upcoming:  'text-gray-600 bg-gray-100',
+    }[order.due_status] ?? 'text-gray-400 bg-gray-50';
+
+    let label = date;
+    if (order.due_status === 'overdue') {
+        const late = Math.abs(days);
+        label = `${date} · ${late} ${late === 1 ? 'dia' : 'dias'} em atraso`;
+    } else if (order.due_status === 'due_today') {
+        label = `${date} · vence hoje`;
+    } else if (order.due_status === 'upcoming') {
+        label = `${date} · em ${days} ${days === 1 ? 'dia' : 'dias'}`;
+    }
+
+    return (
+        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${style}`}>
+            {label}
+        </span>
+    );
+}
+
+export default function ReceivablesIndex({ orders, customers, filters, alert }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [customerId, setCustomerId] = useState(filters.customer_id ?? '');
     const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
@@ -46,6 +80,54 @@ export default function ReceivablesIndex({ orders, customers, filters }) {
                 <h1 className="text-2xl font-bold text-gray-900">Recebimentos</h1>
                 <p className="text-sm text-gray-400 mt-1">Controle financeiro das vendas.</p>
             </div>
+
+            {/* Alerta de cobranças vencidas / vencendo hoje */}
+            {(alert?.overdue > 0 || alert?.due_today > 0) && (
+                <div className={`mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border ${
+                    alert.overdue > 0
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-amber-50 border-amber-200'
+                }`}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                        alert.overdue > 0 ? 'bg-red-100' : 'bg-amber-100'
+                    }`}>
+                        <AlertTriangle size={18} className={alert.overdue > 0 ? 'text-red-600' : 'text-amber-600'} strokeWidth={2} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold ${alert.overdue > 0 ? 'text-red-800' : 'text-amber-800'}`}>
+                            {alert.due_today > 0 && (
+                                <>{alert.due_today} cobrança{alert.due_today !== 1 ? 's' : ''} vence{alert.due_today !== 1 ? 'm' : ''} hoje</>
+                            )}
+                            {alert.due_today > 0 && alert.overdue > 0 && ' · '}
+                            {alert.overdue > 0 && (
+                                <>{alert.overdue} vencida{alert.overdue !== 1 ? 's' : ''}</>
+                            )}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">Combinado com o cliente para pagamento — cobre hoje.</p>
+                    </div>
+
+                    <div className="flex gap-2 shrink-0">
+                        {alert.due_today > 0 && (
+                            <button
+                                onClick={() => apply({ payment_status: 'due_today' })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition"
+                            >
+                                <CalendarClock size={13} strokeWidth={2} />
+                                Vence hoje
+                            </button>
+                        )}
+                        {alert.overdue > 0 && (
+                            <button
+                                onClick={() => apply({ payment_status: 'overdue' })}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition"
+                            >
+                                Ver vencidas
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Tabs de status */}
             <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-lg w-fit">
@@ -100,6 +182,7 @@ export default function ReceivablesIndex({ orders, customers, filters }) {
                                 <th className="text-left px-5 py-3 font-semibold">Pedido</th>
                                 <th className="text-left px-5 py-3 font-semibold">Cliente</th>
                                 <th className="text-left px-5 py-3 font-semibold">Data</th>
+                                <th className="text-left px-5 py-3 font-semibold">Vencimento</th>
                                 <th className="text-right px-5 py-3 font-semibold">Total</th>
                                 <th className="text-right px-5 py-3 font-semibold">Recebido</th>
                                 <th className="text-right px-5 py-3 font-semibold">Saldo</th>
@@ -116,6 +199,7 @@ export default function ReceivablesIndex({ orders, customers, filters }) {
                                         <td className="px-5 py-3.5 font-medium text-gray-900">#{order.order_number}</td>
                                         <td className="px-5 py-3.5 text-gray-700">{order.customer?.name ?? '—'}</td>
                                         <td className="px-5 py-3.5 text-gray-600">{formatDate(order.issue_date)}</td>
+                                        <td className="px-5 py-3.5"><DueBadge order={order} /></td>
                                         <td className="px-5 py-3.5 text-right text-gray-900 font-medium">{formatCurrency(order.total)}</td>
                                         <td className="px-5 py-3.5 text-right text-green-600">{formatCurrency(order.paid_total)}</td>
                                         <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{formatCurrency(order.remaining)}</td>

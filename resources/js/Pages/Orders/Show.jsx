@@ -125,6 +125,16 @@ export default function OrderShow({ order }) {
                                             <td className="px-5 py-3 text-gray-600">{formatDateTime(p.paid_at)}</td>
                                             <td className="px-3 py-3 text-gray-600">{METHOD[p.method] ?? p.method}</td>
                                             <td className="px-3 py-3 text-gray-500">{p.bank_account?.name ?? '—'}</td>
+                                            <td className="px-3 py-3">
+                                                {p.receipt_url ? (
+                                                    <a href={p.receipt_url} target="_blank" rel="noreferrer"
+                                                        className="text-xs font-medium text-primary-600 hover:text-primary-700 transition">
+                                                        Comprovante
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-gray-300">—</span>
+                                                )}
+                                            </td>
                                             <td className="px-5 py-3 text-right font-semibold text-green-600">{formatCurrency(p.amount)}</td>
                                         </tr>
                                     ))}
@@ -181,6 +191,20 @@ export default function OrderShow({ order }) {
                     <div className="bg-white rounded-xl border border-gray-200 p-5">
                         <h2 className="text-sm font-semibold text-gray-700 mb-3">Financeiro</h2>
                         <div className="flex flex-col gap-2 text-sm">
+                            {order.due_date && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500">Vencimento</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                        order.due_status === 'overdue'   ? 'text-red-700 bg-red-50' :
+                                        order.due_status === 'due_today' ? 'text-amber-700 bg-amber-50' :
+                                        'text-gray-600 bg-gray-100'
+                                    }`}>
+                                        {formatDate(order.due_date)}
+                                        {order.due_status === 'overdue'   && ' · vencido'}
+                                        {order.due_status === 'due_today' && ' · vence hoje'}
+                                    </span>
+                                </div>
+                            )}
                             <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-medium text-gray-900">{formatCurrency(order.total)}</span></div>
                             <div className="flex justify-between"><span className="text-gray-500">Recebido</span><span className="font-medium text-green-600">{formatCurrency(order.paid_total)}</span></div>
                             <div className="flex justify-between border-t border-gray-100 pt-2"><span className="text-gray-500">Saldo</span><span className="font-bold text-gray-900">{formatCurrency(order.remaining)}</span></div>

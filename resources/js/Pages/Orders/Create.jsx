@@ -10,6 +10,7 @@ export default function OrderCreate({ customers, products }) {
     const form = useForm({
         customer_id:           '',
         issue_date:            new Date().toISOString().slice(0, 10),
+        due_date:              '',
         delivery_street:       '',
         delivery_number:       '',
         delivery_complement:   '',

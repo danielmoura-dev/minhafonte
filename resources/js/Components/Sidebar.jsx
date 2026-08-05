@@ -58,17 +58,22 @@ function NavGroup({ icon: Icon, label, open, onToggle, children }) {
     );
 }
 
-function SubNavItem({ href, label, active }) {
+function SubNavItem({ href, label, active, badge }) {
     return (
         <Link
             href={href}
-            className={`block px-2 py-2 rounded-md text-sm transition-colors ${
+            className={`flex items-center justify-between gap-2 px-2 py-2 rounded-md text-sm transition-colors ${
                 active
                     ? 'text-primary-700 font-medium'
                     : 'text-gray-500 hover:text-gray-900'
             }`}
         >
-            {label}
+            <span>{label}</span>
+            {badge > 0 && (
+                <span className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {badge > 99 ? '99+' : badge}
+                </span>
+            )}
         </Link>
     );
 }
@@ -88,6 +93,10 @@ function resolveOpenGroup(url) {
 export default function Sidebar() {
     const { url, props } = usePage();
     const company = props.auth?.user;
+
+    // Cobranças vencidas + vencendo hoje (bolinha vermelha em Recebimentos)
+    const alert = props.receivablesAlert;
+    const dueCount = (alert?.due_today ?? 0) + (alert?.overdue ?? 0);
 
     const [openGroup, setOpenGroup] = useState(() => resolveOpenGroup(url));
 
@@ -163,6 +172,7 @@ export default function Sidebar() {
                             href={route('receivables.index')}
                             label="Recebimentos"
                             active={url.startsWith('/recebimentos')}
+                            badge={dueCount}
                         />
                     </NavGroup>
 

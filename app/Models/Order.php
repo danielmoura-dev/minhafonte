@@ -18,6 +18,7 @@ class Order extends Model
         'customer_id',
         'order_number',
         'issue_date',
+        'due_date',
         'delivery_street',
         'delivery_number',
         'delivery_complement',
@@ -34,12 +35,13 @@ class Order extends Model
         'notes',
     ];
 
-    protected $appends = ['remaining'];
+    protected $appends = ['remaining', 'due_status', 'days_until_due'];
 
     protected function casts(): array
     {
         return [
             'issue_date'            => 'date',
+            'due_date'              => 'date',
             'total'                 => 'decimal:2',
             'paid_total'            => 'decimal:2',
             'delivery_street'       => Uppercase::class,
@@ -53,6 +55,47 @@ class Order extends Model
     public function getRemainingAttribute(): float
     {
         return round((float) $this->total - (float) $this->paid_total, 2);
+    }
+
+    /**
+     * Situação do vencimento: overdue | due_today | upcoming.
+     * Null quando não há vencimento definido ou a venda já está quitada.
+     */
+    public function getDueStatusAttribute(): ?string
+    {
+        if (! $this->due_date || $this->payment_status === 'paid') {
+            return null;
+        }
+
+        $days = $this->days_until_due;
+
+        return match (true) {
+            $days < 0  => 'overdue',
+            $days === 0 => 'due_today',
+            default    => 'upcoming',
+        };
+    }
+
+    /**
+     * Dias até o vencimento (negativo = vencido). Null se não houver vencimento.
+     */
+    public function getDaysUntilDueAttribute(): ?int
+    {
+        if (! $this->due_date) {
+            return null;
+        }
+
+        return (int) now()->startOfDay()->diffInDays($this->due_date->startOfDay(), false);
+    }
+
+    /**
+     * Cobranças em aberto que já venceram ou vencem hoje — base do alerta.
+     */
+    public function scopeDueAlert($query)
+    {
+        return $query->whereIn('payment_status', ['pending', 'partial'])
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<=', now()->toDateString());
     }
 
     public function company(): BelongsTo

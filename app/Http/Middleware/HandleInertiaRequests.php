@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -33,6 +34,23 @@ class HandleInertiaRequests extends Middleware
                 'status'  => fn () => $request->session()->get('status'),
             ],
             'vapidPublicKey' => config('services.vapid.public_key'),
+
+            // Contador de cobranças vencidas/vencendo hoje (bolinha na sidebar)
+            'receivablesAlert' => function () use ($request) {
+                $company = $request->user();
+
+                if (! $company) {
+                    return null;
+                }
+
+                $today = now()->toDateString();
+                $base  = fn () => Order::fromCompany($company->id)->dueAlert();
+
+                return [
+                    'due_today' => (clone $base())->whereDate('due_date', $today)->count(),
+                    'overdue'   => (clone $base())->whereDate('due_date', '<', $today)->count(),
+                ];
+            },
         ]);
     }
 }

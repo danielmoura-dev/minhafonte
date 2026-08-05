@@ -1,6 +1,8 @@
 import AppLayout from '@/Layouts/AppLayout';
-import { Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Plus, Wallet, CheckCircle2 } from 'lucide-react';
+import { Link, useForm, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { ArrowLeft, Plus, Wallet, CheckCircle2, Paperclip, FileText, Image as ImageIcon, X } from 'lucide-react';
+import FileDropzone from '@/Components/UI/FileDropzone';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -29,8 +31,96 @@ function AmountInput({ value, onChange }) {
     );
 }
 
+/** Modal para anexar/trocar o comprovante de um pagamento já registrado. */
+function ReceiptModal({ payment, onClose }) {
+    const { data, setData, post, processing, errors } = useForm({ receipt: null });
+
+    if (!payment) return null;
+
+    function submit(e) {
+        e.preventDefault();
+        post(route('receivables.receipt.store', payment.id), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: onClose,
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+            <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                        {payment.receipt_url ? 'Trocar comprovante' : 'Anexar comprovante'}
+                    </h3>
+                    <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
+                        <X size={16} />
+                    </button>
+                </div>
+
+                <FileDropzone
+                    file={data.receipt}
+                    onChange={f => setData('receipt', f)}
+                    error={errors.receipt}
+                />
+
+                <div className="flex gap-2 mt-5">
+                    <button type="button" onClick={onClose} disabled={processing}
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-60">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={processing || !data.receipt}
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition disabled:opacity-60">
+                        {processing ? 'Enviando...' : 'Salvar'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+/** Link/ação do comprovante dentro da lista de pagamentos. */
+function ReceiptCell({ payment, onAttach }) {
+    if (!payment.receipt_url) {
+        return (
+            <button
+                onClick={() => onAttach(payment)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-primary-600 transition"
+                title="Anexar comprovante"
+            >
+                <Paperclip size={13} strokeWidth={2} />
+                Anexar
+            </button>
+        );
+    }
+
+    const Icon = payment.receipt_is_pdf ? FileText : ImageIcon;
+
+    return (
+        <div className="flex items-center gap-2">
+            <a
+                href={payment.receipt_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition"
+            >
+                <Icon size={13} strokeWidth={2} />
+                Ver
+            </a>
+            <button
+                onClick={() => onAttach(payment)}
+                className="text-xs text-gray-400 hover:text-gray-700 transition"
+                title="Trocar comprovante"
+            >
+                trocar
+            </button>
+        </div>
+    );
+}
+
 export default function ReceivableShow({ order, bankAccounts }) {
     const now = new Date();
+    const [receiptFor, setReceiptFor] = useState(null);
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         amount:          '',
         method:          'cash',
@@ -38,6 +128,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
         paid_at_date:    now.toISOString().slice(0, 10),
         paid_at_time:    now.toTimeString().slice(0, 5),
         notes:           '',
+        receipt:         null,
     });
 
     const isPaid = order.payment_status === 'paid';
@@ -48,8 +139,9 @@ export default function ReceivableShow({ order, bankAccounts }) {
         e.preventDefault();
         transform(d => ({ ...d, paid_at: `${d.paid_at_date} ${d.paid_at_time || '00:00'}` }));
         post(route('receivables.payments.store', order.id), {
+            forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => reset('amount', 'notes'),
+            onSuccess: () => reset('amount', 'notes', 'receipt'),
         });
     }
 
@@ -142,6 +234,16 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                     <textarea value={data.notes} onChange={e => setData('notes', e.target.value)} rows={2} placeholder="Opcional..."
                                         className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 transition" />
                                 </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Comprovante <span className="text-gray-400 font-normal">(opcional)</span>
+                                    </label>
+                                    <FileDropzone
+                                        file={data.receipt}
+                                        onChange={f => setData('receipt', f)}
+                                        error={errors.receipt}
+                                    />
+                                </div>
                             </div>
                             <div className="flex justify-end mt-5">
                                 <button type="submit" disabled={processing}
@@ -168,6 +270,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                         <th className="text-left px-3 py-2.5 font-semibold">Forma</th>
                                         <th className="text-left px-3 py-2.5 font-semibold">Conta</th>
                                         <th className="text-left px-3 py-2.5 font-semibold">Usuário</th>
+                                        <th className="text-left px-3 py-2.5 font-semibold">Comprovante</th>
                                         <th className="text-right px-5 py-2.5 font-semibold">Valor</th>
                                     </tr>
                                 </thead>
@@ -178,12 +281,15 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                             <td className="px-3 py-3 text-gray-600">{METHOD[p.method] ?? p.method}</td>
                                             <td className="px-3 py-3 text-gray-500">{p.bank_account?.name ?? '—'}</td>
                                             <td className="px-3 py-3 text-gray-500">{p.actor_name ?? '—'}</td>
+                                            <td className="px-3 py-3">
+                                                <ReceiptCell payment={p} onAttach={setReceiptFor} />
+                                            </td>
                                             <td className="px-5 py-3 text-right font-semibold text-green-600">{formatCurrency(p.amount)}</td>
                                         </tr>
                                     ))}
                                     {order.payments.some(p => p.notes) && (
                                         <tr>
-                                            <td colSpan={5} className="px-5 py-2 text-xs text-gray-400">
+                                            <td colSpan={6} className="px-5 py-2 text-xs text-gray-400">
                                                 {order.payments.filter(p => p.notes).map(p => `• ${p.notes}`).join('  ')}
                                             </td>
                                         </tr>
@@ -194,6 +300,8 @@ export default function ReceivableShow({ order, bankAccounts }) {
                     </div>
                 </div>
             </div>
+
+            <ReceiptModal payment={receiptFor} onClose={() => setReceiptFor(null)} />
         </AppLayout>
     );
 }

@@ -18,6 +18,7 @@ class UpdateOrderRequest extends FormRequest
         return [
             'customer_id'           => ['required', Rule::exists('customers', 'id')->where('company_id', Auth::id())],
             'issue_date'            => ['required', 'date'],
+            'due_date'              => ['nullable', 'date'],
 
             'delivery_street'       => ['nullable', 'string', 'max:255'],
             'delivery_number'       => ['nullable', 'string', 'max:20'],

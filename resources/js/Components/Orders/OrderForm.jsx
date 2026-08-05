@@ -199,6 +199,18 @@ export default function OrderForm({ data, setData, errors, products, customers, 
                         />
                     </Field>
 
+                    <Field label="Data de vencimento" error={errors.due_date}>
+                        <input
+                            type="date"
+                            value={data.due_date ?? ''}
+                            onChange={e => setData('due_date', e.target.value)}
+                            className={inputCls}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Quando o cliente vai pagar. Deixe em branco se for à vista.
+                        </p>
+                    </Field>
+
                     <Field label="Cliente" error={errors.customer_id} required>
                         <SearchableSelect
                             value={data.customer_id}
