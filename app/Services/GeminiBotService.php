@@ -88,20 +88,29 @@ class GeminiBotService
                     : 'Desculpe, não consegui montar uma resposta agora. Tente novamente.';
             }
 
-            // Executa as funções pedidas e devolve os resultados ao modelo
-            $contents[] = ['role' => 'model', 'parts' => $parts];
+            // Devolve as chamadas de função ao modelo preservando os campos que
+            // ele mandou (thoughtSignature é obrigatório nos modelos novos) e
+            // apenas forçando `args` a voltar como OBJETO: sem argumentos, o PHP
+            // decodifica `{}` como array vazio e reenviaria `[]` (lista), recusado.
+            $modelParts = array_map(function ($call) {
+                $call['functionCall']['args'] = (object) ($call['functionCall']['args'] ?? []);
+
+                return $call;
+            }, $functionCalls);
+
+            $contents[] = ['role' => 'model', 'parts' => $modelParts];
 
             $responseParts = [];
             foreach ($functionCalls as $call) {
                 $name = $call['functionCall']['name'] ?? '';
                 $args = $call['functionCall']['args'] ?? [];
 
-                $result = $tools->execute($name, is_array($args) ? $args : []);
+                $result = $tools->execute($name, \is_array($args) ? $args : []);
 
                 $responseParts[] = [
                     'functionResponse' => [
                         'name'     => $name,
-                        'response' => ['result' => $result],
+                        'response' => (object) ['result' => $result],
                     ],
                 ];
             }
