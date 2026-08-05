@@ -141,17 +141,23 @@ Route::middleware('auth')->group(function () {
     ]);
     Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
 
-    // Clientes
+    // Clientes (rotas estáticas antes do resource)
+    Route::get('clientes/resumo', [CustomerController::class, 'reportAll'])
+        ->name('customers.report-all');
+    Route::get('clientes/{customer}/extrato', [CustomerController::class, 'report'])
+        ->name('customers.report');
+
     Route::resource('clientes', CustomerController::class)->parameters([
         'clientes' => 'customer',
     ])->names([
         'index'   => 'customers.index',
         'create'  => 'customers.create',
         'store'   => 'customers.store',
+        'show'    => 'customers.show',
         'edit'    => 'customers.edit',
         'update'  => 'customers.update',
         'destroy' => 'customers.destroy',
-    ])->except('show');
+    ]);
     Route::patch('clientes/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])
         ->name('customers.toggle-status');
 

@@ -1,11 +1,30 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Search, Pencil, Trash2, Users, PowerOff, Power } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Users, PowerOff, Power, FileText, ChevronRight, Wallet, Clock, ShoppingCart } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import ConfirmModal from '@/Components/UI/ConfirmModal';
 
-export default function CustomersIndex({ customers, filters }) {
+function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
+}
+
+function StatCard({ icon: Icon, label, value, sub, color }) {
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                <Icon size={16} strokeWidth={1.75} className="text-white" />
+            </div>
+            <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+                <p className="text-lg font-bold text-gray-900">{value}</p>
+                {sub && <p className="text-[11px] text-gray-400">{sub}</p>}
+            </div>
+        </div>
+    );
+}
+
+export default function CustomersIndex({ customers, stats, filters }) {
     const { flash } = usePage().props;
     const [search, setSearch]   = useState(filters.search ?? '');
     const [status, setStatus]   = useState(filters.status ?? '');
@@ -52,13 +71,36 @@ export default function CustomersIndex({ customers, filters }) {
                         {customers.total} cliente{customers.total !== 1 ? 's' : ''} cadastrado{customers.total !== 1 ? 's' : ''}
                     </p>
                 </div>
-                <Link
-                    href={route('customers.create')}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
-                >
-                    <Plus size={16} strokeWidth={2} />
-                    Cadastrar
-                </Link>
+                <div className="flex items-center gap-2">
+                    <a
+                        href={route('customers.report-all')}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2.5 rounded-lg transition"
+                        title="Imprimir resumo de todos os clientes"
+                    >
+                        <FileText size={16} strokeWidth={1.75} />
+                        Resumo
+                    </a>
+                    <Link
+                        href={route('customers.create')}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
+                    >
+                        <Plus size={16} strokeWidth={2} />
+                        Cadastrar
+                    </Link>
+                </div>
+            </div>
+
+            {/* Indicadores da carteira */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <StatCard icon={Users} label="Clientes" value={stats.customers}
+                    sub={`${stats.customers_active} ativo${stats.customers_active !== 1 ? 's' : ''}`} color="bg-primary-600" />
+                <StatCard icon={ShoppingCart} label="Total vendido" value={formatCurrency(stats.total_sold)}
+                    sub={`${stats.orders} venda${stats.orders !== 1 ? 's' : ''}`} color="bg-violet-500" />
+                <StatCard icon={Wallet} label="Recebido" value={formatCurrency(stats.total_sold - stats.total_open)} color="bg-green-600" />
+                <StatCard icon={Clock} label="Em aberto" value={formatCurrency(stats.total_open)}
+                    sub={`${stats.customers_owing} cliente${stats.customers_owing !== 1 ? 's' : ''} devendo`} color="bg-amber-500" />
             </div>
 
             <form onSubmit={handleSearch} className="flex gap-3 mb-5 flex-wrap">
@@ -104,20 +146,31 @@ export default function CustomersIndex({ customers, filters }) {
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Telefone</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Cidade / UF</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Vendas</th>
+                                <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Comprado</th>
+                                <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Em aberto</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
                                 <th className="px-5 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {customers.data.map(customer => (
-                                <tr key={customer.id} className={`hover:bg-gray-50 transition ${!customer.is_active ? 'opacity-60' : ''}`}>
+                            {customers.data.map(customer => {
+                                const open = (parseFloat(customer.total_bought) || 0) - (parseFloat(customer.total_paid) || 0);
+
+                                return (
+                                <tr key={customer.id}
+                                    onClick={() => router.visit(route('customers.show', customer.id))}
+                                    className={`hover:bg-primary-50/40 transition cursor-pointer ${!customer.is_active ? 'opacity-60' : ''}`}
+                                    title="Ver perfil do cliente">
                                     <td className="px-5 py-3.5">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-xs shrink-0">
                                                 {customer.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">{customer.name}</p>
+                                                <p className="font-medium text-gray-900 flex items-center gap-1">
+                                                    {customer.name}
+                                                    <ChevronRight size={13} className="text-gray-300" />
+                                                </p>
                                                 {customer.email && <p className="text-xs text-gray-400">{customer.email}</p>}
                                             </div>
                                         </div>
@@ -127,6 +180,12 @@ export default function CustomersIndex({ customers, filters }) {
                                         {customer.city ? `${customer.city}${customer.state ? ' / ' + customer.state : ''}` : '—'}
                                     </td>
                                     <td className="px-5 py-3.5 text-gray-600">{customer.orders_count}</td>
+                                    <td className="px-5 py-3.5 text-right font-medium text-gray-900">
+                                        {formatCurrency(customer.total_bought)}
+                                    </td>
+                                    <td className={`px-5 py-3.5 text-right font-semibold ${open > 0 ? 'text-amber-600' : 'text-gray-300'}`}>
+                                        {open > 0 ? formatCurrency(open) : '—'}
+                                    </td>
                                     <td className="px-5 py-3.5">
                                         {customer.is_active ? (
                                             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
@@ -138,7 +197,7 @@ export default function CustomersIndex({ customers, filters }) {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-5 py-3.5">
+                                    <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-1">
                                             <Link
                                                 href={route('customers.edit', customer.id)}
@@ -171,7 +230,8 @@ export default function CustomersIndex({ customers, filters }) {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 )}
