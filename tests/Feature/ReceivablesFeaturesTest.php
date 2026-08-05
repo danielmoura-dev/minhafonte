@@ -45,6 +45,7 @@ class ReceivablesFeaturesTest extends TestCase
         $upcoming = $this->order($company, now()->addDays(5)->toDateString());
         $noDue    = $this->order($company, null);
         $paid     = $this->order($company, now()->toDateString(), 'paid');
+        $partial  = $this->order($company, now()->subDay()->toDateString(), 'partial');
 
         $this->assertSame('overdue', $overdue->due_status);
         $this->assertSame('due_today', $today->due_status);
@@ -52,12 +53,14 @@ class ReceivablesFeaturesTest extends TestCase
         $this->assertNull($noDue->due_status);
         // Venda quitada não entra no alerta mesmo vencendo hoje
         $this->assertNull($paid->due_status);
+        // Pagamento parcial tira a venda da cobrança, mesmo estando vencida
+        $this->assertNull($partial->due_status);
 
         $this->assertSame(-3, $overdue->days_until_due);
         $this->assertSame(0, $today->days_until_due);
         $this->assertSame(5, $upcoming->days_until_due);
 
-        fwrite(STDERR, "\nvencimento: vencido/hoje/futuro classificados; venda paga fora do alerta\n");
+        fwrite(STDERR, "\nvencimento: vencido/hoje/futuro classificados; paga e parcial fora do alerta\n");
     }
 
     public function test_due_alert_counts_ignore_paid_and_null(): void
@@ -67,9 +70,11 @@ class ReceivablesFeaturesTest extends TestCase
         $this->order($company, now()->subDays(1)->toDateString());
         $this->order($company, now()->subDays(2)->toDateString());
         $this->order($company, now()->toDateString());
-        $this->order($company, now()->addDay()->toDateString());   // futuro: fora
-        $this->order($company, null);                               // sem vencimento: fora
-        $this->order($company, now()->toDateString(), 'paid');      // paga: fora
+        $this->order($company, now()->addDay()->toDateString());     // futuro: fora
+        $this->order($company, null);                                 // sem vencimento: fora
+        $this->order($company, now()->toDateString(), 'paid');        // paga: fora
+        $this->order($company, now()->toDateString(), 'partial');     // parcial: fora
+        $this->order($company, now()->subDays(4)->toDateString(), 'partial'); // parcial vencida: fora
 
         $today = now()->toDateString();
 
@@ -79,7 +84,34 @@ class ReceivablesFeaturesTest extends TestCase
         $this->assertSame(1, $dueToday);
         $this->assertSame(2, $overdue);
 
-        fwrite(STDERR, "alerta: {$dueToday} vence hoje, {$overdue} vencidas (ignora paga/sem vencimento/futura)\n");
+        fwrite(STDERR, "alerta: {$dueToday} vence hoje, {$overdue} vencidas (ignora paga/parcial/sem vencimento/futura)\n");
+    }
+
+    public function test_partial_payment_removes_order_from_due_alert(): void
+    {
+        $company = $this->company();
+        $today   = now()->toDateString();
+
+        // Cobrança de R$ 100 vencendo hoje, sem nenhum pagamento
+        $order = $this->order($company, $today);
+
+        $countAlert = fn () => Order::fromCompany($company->id)->dueAlert()->count();
+
+        $this->assertSame(1, $countAlert());
+        $this->assertSame('due_today', $order->due_status);
+
+        // Cliente paga R$ 40 (parcial) -> cobrança considerada atendida
+        $this->actingAs($company)->post(route('receivables.payments.store', $order), [
+            'amount' => 40, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+        ])->assertRedirect();
+
+        $order->refresh();
+
+        $this->assertSame('partial', $order->payment_status);
+        $this->assertSame(0, $countAlert());
+        $this->assertNull($order->due_status);
+
+        fwrite(STDERR, "parcial: venda saiu do alerta após pagamento parcial (status {$order->payment_status})\n");
     }
 
     public function test_payment_stores_receipt_file(): void

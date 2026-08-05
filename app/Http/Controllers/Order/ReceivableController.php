@@ -35,13 +35,14 @@ class ReceivableController extends Controller
             ->when($request->date_to, fn ($q, $v) => $q->whereDate('issue_date', '<=', $v))
             ->when($status === 'open', fn ($q) => $q->whereIn('payment_status', ['pending', 'partial']))
             ->when(\in_array($status, ['pending', 'partial', 'paid']), fn ($q) => $q->where('payment_status', $status))
-            // Abas de vencimento (sempre sobre cobranças em aberto)
+            // Abas de vencimento: só cobranças ainda não atendidas
+            // (com pagamento parcial a venda sai da cobrança)
             ->when($status === 'due_today', fn ($q) => $q
-                ->whereIn('payment_status', ['pending', 'partial'])
+                ->where('payment_status', 'pending')
                 ->whereDate('due_date', $today)
             )
             ->when($status === 'overdue', fn ($q) => $q
-                ->whereIn('payment_status', ['pending', 'partial'])
+                ->where('payment_status', 'pending')
                 ->whereDate('due_date', '<', $today)
             )
             // Em aberto: mais urgente primeiro (sem vencimento vai para o fim)

@@ -59,11 +59,12 @@ class Order extends Model
 
     /**
      * Situação do vencimento: overdue | due_today | upcoming.
-     * Null quando não há vencimento definido ou a venda já está quitada.
+     * Só vale para cobranças ainda não atendidas: assim que entra qualquer
+     * pagamento (parcial ou total), a venda sai da cobrança.
      */
     public function getDueStatusAttribute(): ?string
     {
-        if (! $this->due_date || $this->payment_status === 'paid') {
+        if (! $this->due_date || $this->payment_status !== 'pending') {
             return null;
         }
 
@@ -89,11 +90,12 @@ class Order extends Model
     }
 
     /**
-     * Cobranças em aberto que já venceram ou vencem hoje — base do alerta.
+     * Cobranças ainda não atendidas que já venceram ou vencem hoje — base do alerta.
+     * Vendas com pagamento parcial saem da cobrança (o cliente já pagou algo).
      */
     public function scopeDueAlert($query)
     {
-        return $query->whereIn('payment_status', ['pending', 'partial'])
+        return $query->where('payment_status', 'pending')
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<=', now()->toDateString());
     }
