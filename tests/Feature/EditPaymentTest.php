@@ -49,22 +49,72 @@ class EditPaymentTest extends TestCase
         return $order->payments()->latest('id')->first();
     }
 
-    public function test_wrong_amount_can_be_corrected(): void
+    public function test_payment_above_remaining_is_rejected(): void
     {
         $order = $this->order(200);
 
-        // Digitou 500 sem querer numa venda de 200
-        $payment = $this->pay($order, 500);
-        $this->assertSame('paid', $order->fresh()->payment_status);
+        // Digitou 500 sem querer numa venda de 200: precisa ser recusado,
+        // senão a venda quitaria por engano e travaria a correção.
+        $this->from(route('receivables.show', $order))
+            ->post(route('receivables.payments.store', $order), [
+                'amount' => 500, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('amount');
 
-        // Como ficou "paga", a correção é bloqueada (regra do usuário)
-        $this->put(route('receivables.payments.update', $payment), [
+        $order->refresh();
+        $this->assertSame(0, $order->payments()->count());
+        $this->assertSame('pending', $order->payment_status);
+
+        fwrite(STDERR, "\nlimite: pagamento de 500 recusado numa venda de 200\n");
+    }
+
+    public function test_second_payment_cannot_exceed_remaining(): void
+    {
+        $order = $this->order(200);
+        $this->pay($order, 150);   // sobra 50
+
+        $this->from(route('receivables.show', $order))
+            ->post(route('receivables.payments.store', $order), [
+                'amount' => 80, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('amount');
+
+        $this->assertEquals(150, (float) $order->fresh()->paid_total);
+
+        // Exatamente o saldo é aceito
+        $this->post(route('receivables.payments.store', $order), [
             'amount' => 50, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
         ])->assertRedirect();
 
-        $this->assertEquals(500, (float) $payment->fresh()->amount);
+        $this->assertSame('paid', $order->fresh()->payment_status);
 
-        fwrite(STDERR, "\ncorrecao: venda quitada bloqueia alteração (valor segue 500)\n");
+        fwrite(STDERR, "limite: 2º pagamento de 80 recusado (saldo 50); 50 aceito e quitou\n");
+    }
+
+    public function test_correction_above_remaining_is_rejected(): void
+    {
+        $order = $this->order(200);
+        $this->pay($order, 120);              // outro pagamento
+        $payment = $this->pay($order, 30);    // este será corrigido
+
+        // Teto para este pagamento: 200 - 120 = 80
+        $this->from(route('receivables.show', $order))
+            ->put(route('receivables.payments.update', $payment), [
+                'amount' => 150, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('amount');
+
+        $this->assertEquals(30, (float) $payment->fresh()->amount);
+
+        // 80 é aceito e quita a venda
+        $this->put(route('receivables.payments.update', $payment), [
+            'amount' => 80, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+        ])->assertRedirect();
+
+        $this->assertEquals(80, (float) $payment->fresh()->amount);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+
+        fwrite(STDERR, "limite: correção de 150 recusada (teto 80); 80 aceito e quitou\n");
     }
 
     public function test_partial_payment_amount_is_corrected_and_recalculated(): void

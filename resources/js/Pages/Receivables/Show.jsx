@@ -299,7 +299,9 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Valor <span className="text-red-500">*</span></label>
                                     <AmountInput value={data.amount} onChange={v => setData('amount', v)} />
-                                    {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                                    {errors.amount
+                                        ? <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+                                        : <p className="text-xs text-gray-400 mt-1">Máximo: {formatCurrency(remaining)}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Forma de pagamento <span className="text-red-500">*</span></label>

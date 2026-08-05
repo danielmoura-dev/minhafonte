@@ -103,6 +103,14 @@ class ReceivableController extends Controller
             return back()->with('error', 'Esta venda já está totalmente paga.');
         }
 
+        // Não permite lançar mais do que falta (evita quitar a venda por engano
+        // de digitação, o que travaria a correção do valor depois).
+        if ($amount > $remaining + 0.001) {
+            return back()
+                ->withErrors(['amount' => 'O valor não pode ser maior que o saldo de ' . $this->money($remaining) . '.'])
+                ->withInput();
+        }
+
         $order->payments()->create([
             'company_id'      => Auth::id(),
             'bank_account_id' => $data['bank_account_id'] ?? null,
@@ -156,9 +164,20 @@ class ReceivableController extends Controller
         ]);
 
         $oldAmount = (float) $payment->amount;
+        $newAmount = round((float) $data['amount'], 2);
+
+        // Teto: total da venda menos o que os OUTROS pagamentos já cobrem
+        $otherPaid = (float) $order->payments()->where('id', '!=', $payment->id)->sum('amount');
+        $maxAmount = round((float) $order->total - $otherPaid, 2);
+
+        if ($newAmount > $maxAmount + 0.001) {
+            return back()->withErrors([
+                'amount' => 'O valor não pode ser maior que ' . $this->money($maxAmount) . ' (o restante da venda).',
+            ]);
+        }
 
         $payment->update([
-            'amount'          => round((float) $data['amount'], 2),
+            'amount'          => $newAmount,
             'method'          => $data['method'],
             'bank_account_id' => $data['bank_account_id'] ?? null,
             'paid_at'         => $data['paid_at'],
@@ -215,6 +234,11 @@ class ReceivableController extends Controller
         }
 
         return back()->with('success', 'Comprovante removido.');
+    }
+
+    private function money(float $value): string
+    {
+        return 'R$ ' . number_format($value, 2, ',', '.');
     }
 
     private function actorName(): ?string
