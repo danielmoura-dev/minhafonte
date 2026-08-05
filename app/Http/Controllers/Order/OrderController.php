@@ -92,7 +92,12 @@ class OrderController extends Controller
 
         try {
             $order = DB::transaction(function () use ($data, $stockItems, $force, $products, $service) {
-                $nextNumber = (Order::fromCompany(Auth::id())->lockForUpdate()->max('order_number') ?? 0) + 1;
+                // Considera também as vendas excluídas para que um número nunca
+                // se repita (a venda excluída continua no banco, marcada).
+                $nextNumber = (Order::withTrashed()
+                    ->fromCompany(Auth::id())
+                    ->lockForUpdate()
+                    ->max('order_number') ?? 0) + 1;
 
                 $items = collect($data['items'])->map(function ($item) use ($products) {
                     $product  = $products[$item['product_id']];
