@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Product;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,30 +42,37 @@ class ProductController extends Controller
             ->whereColumn('current_stock', '<=', 'min_quantity')
             ->count();
 
+        // Indicadores vêm das vendas a clientes (módulo Vendas), não mais das
+        // vendas de comissão. whereHas('order') respeita o escopo por empresa
+        // e exclui automaticamente itens de vendas excluídas (soft delete).
+        $orderItemsByProduct = OrderItem::query()
+            ->whereNotNull('product_id')
+            ->whereHas('order', fn ($q) => $q->where('company_id', Auth::id()))
+            ->get(['product_id', 'quantity', 'subtotal'])
+            ->groupBy('product_id');
+
         $allProducts = Product::fromCompany(Auth::id())
-            ->withCount('sales')
-            ->withSum('sales', 'total')
-            ->withSum('sales', 'quantity')
-            ->withSum('sales', 'commission_total')
             ->get(['id', 'name', 'code', 'active']);
 
-        $grandTotal = (float) $allProducts->sum('sales_sum_total');
+        $grandTotal = (float) $orderItemsByProduct->flatten()->sum('subtotal');
 
         $productIndicators = $allProducts
-            ->sortByDesc(fn ($p) => (float) ($p->sales_sum_total ?? 0))
-            ->map(fn ($p) => [
-                'id'          => $p->id,
-                'name'        => $p->name,
-                'code'        => $p->code,
-                'active'      => $p->active,
-                'sales_count' => $p->sales_count,
-                'quantity'    => (int) ($p->sales_sum_quantity ?? 0),
-                'total'       => (float) ($p->sales_sum_total ?? 0),
-                'commissions' => (float) ($p->sales_sum_commission_total ?? 0),
-                'percentage'  => $grandTotal > 0
-                    ? round((float) ($p->sales_sum_total ?? 0) / $grandTotal * 100, 1)
-                    : 0,
-            ])
+            ->map(function ($p) use ($orderItemsByProduct, $grandTotal) {
+                $items = $orderItemsByProduct->get($p->id, collect());
+                $total = (float) $items->sum('subtotal');
+
+                return [
+                    'id'          => $p->id,
+                    'name'        => $p->name,
+                    'code'        => $p->code,
+                    'active'      => $p->active,
+                    'sales_count' => $items->count(),
+                    'quantity'    => round((float) $items->sum('quantity'), 3),
+                    'total'       => round($total, 2),
+                    'percentage'  => $grandTotal > 0 ? round($total / $grandTotal * 100, 1) : 0,
+                ];
+            })
+            ->sortByDesc('total')
             ->values();
 
         return Inertia::render('Products/Index', [

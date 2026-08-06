@@ -3,7 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     Plus, Search, Pencil, Trash2, Package, PowerOff, Power,
-    BarChart2, ShoppingCart, TrendingUp, Banknote, AlertTriangle,
+    BarChart2, ShoppingCart, TrendingUp, AlertTriangle,
     Tag, ArrowDownUp, LineChart, History, X, ChefHat,
 } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
@@ -114,7 +114,6 @@ function IndicadoresTab({ indicators, grandTotal }) {
     const withSales    = indicators.filter(p => p.sales_count > 0);
     const withoutSales = indicators.filter(p => p.sales_count === 0);
     const totalQty     = indicators.reduce((s, p) => s + p.quantity, 0);
-    const totalComm    = indicators.reduce((s, p) => s + p.commissions, 0);
 
     const maxTotal = withSales[0]?.total ?? 1;
 
@@ -122,7 +121,7 @@ function IndicadoresTab({ indicators, grandTotal }) {
         <div className="space-y-6">
 
             {/* KPI cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <div className="flex items-center gap-2 mb-1">
                         <Package size={15} className="text-primary-500" />
@@ -149,15 +148,6 @@ function IndicadoresTab({ indicators, grandTotal }) {
                     <p className="text-xl font-bold text-gray-900">{formatCurrency(grandTotal)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">em todas as vendas</p>
                 </div>
-
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Banknote size={15} className="text-orange-500" />
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Comissões pagas</span>
-                    </div>
-                    <p className="text-xl font-bold text-gray-900">{formatCurrency(totalComm)}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">total pago em comissões</p>
-                </div>
             </div>
 
             {/* Table */}
@@ -178,7 +168,6 @@ function IndicadoresTab({ indicators, grandTotal }) {
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Produto</th>
                                 <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Qtd. vendida</th>
                                 <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Faturamento</th>
-                                <th className="text-right px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider hidden sm:table-cell">Comissões</th>
                                 <th className="text-left px-5 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider w-40 hidden md:table-cell">% do total</th>
                             </tr>
                         </thead>
@@ -197,12 +186,6 @@ function IndicadoresTab({ indicators, grandTotal }) {
                                     </td>
                                     <td className="px-5 py-3.5 text-right font-semibold text-gray-900">
                                         {formatCurrency(p.total)}
-                                    </td>
-                                    <td className="px-5 py-3.5 text-right text-gray-600 hidden sm:table-cell">
-                                        {p.commissions > 0
-                                            ? formatCurrency(p.commissions)
-                                            : <span className="text-gray-300">—</span>
-                                        }
                                     </td>
                                     <td className="px-5 py-3.5 hidden md:table-cell">
                                         <div className="flex items-center gap-2">
@@ -225,7 +208,6 @@ function IndicadoresTab({ indicators, grandTotal }) {
                                 <td className="px-5 py-3 font-semibold text-gray-700 text-sm">Total</td>
                                 <td className="px-5 py-3 text-right font-semibold text-gray-700">{formatNumber(totalQty)}</td>
                                 <td className="px-5 py-3 text-right font-bold text-gray-900">{formatCurrency(grandTotal)}</td>
-                                <td className="px-5 py-3 text-right font-semibold text-gray-700 hidden sm:table-cell">{formatCurrency(totalComm)}</td>
                                 <td className="px-5 py-3 hidden md:table-cell">
                                     <span className="text-xs font-medium text-gray-500">100%</span>
                                 </td>
