@@ -75,8 +75,11 @@ class BotDailySummaryTest extends TestCase
 
         $this->assertStringContainsString('ZILUMINA', $text);
         $this->assertStringContainsString('*2 vendas*', $text);
-        $this->assertStringContainsString('PADARIA CENTRAL', $text);
+        $this->assertStringNotContainsString('PADARIA CENTRAL', $text);   // sem lista de clientes
+        $this->assertStringContainsString('Maior venda', $text);
         $this->assertStringContainsString('R$ 1.250,00', $text);
+        $this->assertStringContainsString('Menor venda', $text);
+        $this->assertStringContainsString('R$ 245,00', $text);
         // Itens agregados entre as vendas: 50 + 5 fardos
         $this->assertStringContainsString('55x FARDO 500ML', $items);
         $this->assertStringContainsString('10x GARRAFAO 20L', $items);

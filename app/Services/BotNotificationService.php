@@ -113,8 +113,14 @@ class BotNotificationService
 
         try {
             $this->evolution->sendPresence($instanceName, $phone, $presence, $delay);
-        } catch (\Throwable) {
-            // presença é só estética — segue o envio normalmente
+        } catch (\Throwable $e) {
+            // presença é só estética — segue o envio normalmente, mas registra
+            // o motivo (ex.: instância errada, payload rejeitado pela Evolution).
+            Log::warning('Bot: falha ao mostrar presença', [
+                'instance' => $instanceName,
+                'presence' => $presence,
+                'error'    => $e->getMessage(),
+            ]);
         }
 
         if ($delay > 0) {
@@ -134,8 +140,6 @@ class BotNotificationService
         $weekdays = [1 => 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
         $dateLine = $weekdays[now()->isoWeekday()] . ', ' . now()->format('d/m/Y');
 
-        $statusIcon = ['pago' => '✅', 'parcial' => '🔵', 'pendente' => '🕗'];
-
         // ── Mensagem 1: resumo das vendas ──
         $lines   = [];
         $lines[] = "💧 *{$brand}* — Resumo do dia";
@@ -152,9 +156,12 @@ class BotNotificationService
         $lines[] = "🛒 *{$summary['sales_count']} {$plural}* — total de *{$money($summary['total_value'])}*";
         $lines[] = '';
 
-        foreach ($summary['sales'] as $i => $sale) {
-            $icon    = $statusIcon[$sale['status']] ?? '▫️';
-            $lines[] = ($i + 1) . '. ' . $sale['customer'] . ' — *' . $money($sale['total']) . "* {$icon}";
+        if ($summary['sales_count'] === 1) {
+            $lines[] = '💰 Venda: *' . $money($summary['sales'][0]['total']) . '*';
+        } else {
+            $totals  = array_column($summary['sales'], 'total');
+            $lines[] = '📈 Maior venda: *' . $money(max($totals)) . '*';
+            $lines[] = '📉 Menor venda: *' . $money(min($totals)) . '*';
         }
 
         $lines[] = '';
