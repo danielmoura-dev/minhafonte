@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\FirstAccessController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
+use App\Http\Controllers\CeoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Customer\CustomerController;
 use App\Http\Controllers\Order\OrderController;
@@ -80,6 +81,14 @@ Route::middleware(['auth', 'user.active'])->group(function () {
 
     // Usuário sem nenhum módulo liberado (o dono precisa ajustar as permissões)
     Route::get('/sem-acesso', fn () => Inertia::render('NoAccess'))->name('sem-acesso');
+
+    // Painel do Dono — só consulta, nenhuma ação altera dados
+    Route::middleware('module:ceo,view')->group(function () {
+        Route::get('painel', [CeoController::class, 'index'])->name('ceo.index');
+        Route::get('painel/contas', [CeoController::class, 'bankAccounts'])->name('ceo.bank-accounts');
+        Route::get('painel/vendas', [CeoController::class, 'sales'])->name('ceo.sales');
+        Route::get('painel/ranks', [CeoController::class, 'ranks'])->name('ceo.ranks');
+    });
 
     // Vendedores
     Route::resource('vendedores', SellerController::class)->parameters([

@@ -28,6 +28,8 @@ final class Permissions
     {
         return [
             'dashboard'        => ['label' => 'Dashboard',           'group' => 'Geral',      'actions' => [self::VIEW]],
+            // Painel de leitura para o dono: só consulta, não altera nada.
+            'ceo'              => ['label' => 'Painel do Dono',      'group' => 'Geral',      'actions' => [self::VIEW]],
 
             'orders'           => ['label' => 'Vendas',              'group' => 'Vendas',     'actions' => self::CRUD],
             'receivables'      => ['label' => 'Recebimentos',        'group' => 'Vendas',     'actions' => [self::VIEW, self::CREATE, self::EDIT]],

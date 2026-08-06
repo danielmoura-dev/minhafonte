@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
+    Crown,
     Users,
     Package,
     ShoppingCart,
@@ -217,6 +218,15 @@ export default function Sidebar() {
                         icon={LayoutDashboard}
                         label="Dashboard"
                         active={url === '/dashboard'}
+                    />
+                )}
+
+                {can('ceo') && (
+                    <NavItem
+                        href={route('ceo.index')}
+                        icon={Crown}
+                        label="Painel do Dono"
+                        active={url.startsWith('/painel')}
                     />
                 )}
 
