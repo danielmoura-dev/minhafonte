@@ -62,6 +62,43 @@ class TenancyGuardTest extends TestCase
         fwrite(STDERR, "tenancy: Tenant resolve a empresa a partir do usuário (ids diferentes)\n");
     }
 
+    /**
+     * Toda rota autenticada precisa declarar o módulo que exige. Uma rota sem
+     * gate é um endpoint aberto a qualquer usuário, por mais restrito que ele
+     * seja — e é fácil esquecer ao adicionar uma rota nova.
+     */
+    public function test_toda_rota_autenticada_tem_gate(): void
+    {
+        // Rotas que não pertencem a módulo nenhum: encerrar a sessão, tratar
+        // verificação de e-mail e a tela de "sem acesso" precisam funcionar
+        // para qualquer usuário logado.
+        $semGate = [
+            'logout',
+            'sem-acesso',
+            'verification.notice',
+            'verification.verify',
+            'verification.send',
+        ];
+
+        $desprotegidas = collect(\Illuminate\Support\Facades\Route::getRoutes())
+            ->filter(fn ($route) => in_array('auth', $route->gatherMiddleware(), true))
+            ->reject(fn ($route) => in_array($route->getName(), $semGate, true))
+            ->reject(fn ($route) => collect($route->gatherMiddleware())->contains(
+                fn ($m) => is_string($m) && (str_starts_with($m, 'module:') || $m === 'owner')
+            ))
+            ->map(fn ($route) => $route->getName() ?? $route->uri())
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            [],
+            $desprotegidas,
+            "Rotas autenticadas sem `module:`/`owner`:\n" . implode("\n", $desprotegidas)
+        );
+
+        fwrite(STDERR, "rotas: toda rota autenticada declara módulo/ação\n");
+    }
+
     public function test_guard_web_autentica_usuario_e_nao_empresa(): void
     {
         $company = \App\Models\Company::create([

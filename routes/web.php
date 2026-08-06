@@ -15,6 +15,7 @@ use App\Http\Controllers\RawMaterial\RawMaterialController;
 use App\Http\Controllers\Sale\SaleController;
 use App\Http\Controllers\Settings\BankAccountController;
 use App\Http\Controllers\Settings\CompanySettingsController;
+use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Supplier\SupplierController;
 use App\Http\Controllers\Seller\SellerAuthController;
 use App\Http\Controllers\Seller\SellerController;
@@ -58,7 +59,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/redefinir-senha', [NewPasswordController::class, 'store'])->name('password.update');
 });
 
-Route::middleware('auth')->group(function () {
+// `user.active` derruba na hora quem for desativado, sem esperar o próximo
+// login. Cada rota abaixo declara também o módulo/ação que exige.
+Route::middleware(['auth', 'user.active'])->group(function () {
 
     Route::post('/logout', [AuthenticatedCompanyController::class, 'destroy'])->name('logout');
 
@@ -72,7 +75,8 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
 
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('module:dashboard,view')->name('dashboard');
 
     // Usuário sem nenhum módulo liberado (o dono precisa ajustar as permissões)
     Route::get('/sem-acesso', fn () => Inertia::render('NoAccess'))->name('sem-acesso');
@@ -88,19 +92,23 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'sellers.edit',
         'update'  => 'sellers.update',
         'destroy' => 'sellers.destroy',
-    ]);
+    ])
+        ->middlewareFor(['index', 'show'],   'module:sellers,view')
+        ->middlewareFor(['create', 'store'], 'module:sellers,create')
+        ->middlewareFor(['edit', 'update'],  'module:sellers,edit')
+        ->middlewareFor(['destroy'],         'module:sellers,delete');
     Route::patch('vendedores/{seller}/toggle-status', [SellerController::class, 'toggleStatus'])
-        ->name('sellers.toggle-status');
+        ->middleware('module:sellers,edit')->name('sellers.toggle-status');
     Route::get('vendedores/{seller}/relatorio', [SellerController::class, 'report'])
-        ->name('sellers.report');
+        ->middleware('module:sellers,view')->name('sellers.report');
 
     // Produtos — movimentação de estoque (rotas estáticas antes do resource)
     Route::get('produtos/movimentacao/nova', [\App\Http\Controllers\Product\ProductMovementController::class, 'create'])
-        ->name('products.movements.create');
+        ->middleware('module:products,create')->name('products.movements.create');
     Route::post('produtos/movimentacao', [\App\Http\Controllers\Product\ProductMovementController::class, 'store'])
-        ->name('products.movements.store');
+        ->middleware('module:products,create')->name('products.movements.store');
     Route::get('produtos/movimentacao/historico', [\App\Http\Controllers\Product\ProductMovementController::class, 'history'])
-        ->name('products.movements.history');
+        ->middleware('module:products,view')->name('products.movements.history');
 
     // Produtos
     Route::resource('produtos', ProductController::class)->parameters([
@@ -112,17 +120,22 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'products.edit',
         'update'  => 'products.update',
         'destroy' => 'products.destroy',
-    ]);
+    // O controller não tem show(): sem isto, GET /produtos/5 estoura.
+    ])->except('show')
+        ->middlewareFor(['index'],           'module:products,view')
+        ->middlewareFor(['create', 'store'], 'module:products,create')
+        ->middlewareFor(['edit', 'update'],  'module:products,edit')
+        ->middlewareFor(['destroy'],         'module:products,delete');
     Route::patch('produtos/{product}/toggle-status', [ProductController::class, 'toggleStatus'])
-        ->name('products.toggle-status');
+        ->middleware('module:products,edit')->name('products.toggle-status');
     Route::patch('produtos/{product}/preco', [ProductController::class, 'updatePrice'])
-        ->name('products.update-price');
+        ->middleware('module:products,edit')->name('products.update-price');
     Route::get('produtos/{product}/historico-precos', [ProductController::class, 'priceHistory'])
-        ->name('products.price-history');
+        ->middleware('module:products,view')->name('products.price-history');
     Route::get('produtos/{product}/receita', [\App\Http\Controllers\Product\ProductRecipeController::class, 'edit'])
-        ->name('products.recipe.edit');
+        ->middleware('module:products,edit')->name('products.recipe.edit');
     Route::put('produtos/{product}/receita', [\App\Http\Controllers\Product\ProductRecipeController::class, 'update'])
-        ->name('products.recipe.update');
+        ->middleware('module:products,edit')->name('products.recipe.update');
 
     // Fornecedores
     Route::resource('fornecedores', SupplierController::class)->parameters([
@@ -134,11 +147,15 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'suppliers.edit',
         'update'  => 'suppliers.update',
         'destroy' => 'suppliers.destroy',
-    ])->except('show');
+    ])->except('show')
+        ->middlewareFor(['index'],           'module:suppliers,view')
+        ->middlewareFor(['create', 'store'], 'module:suppliers,create')
+        ->middlewareFor(['edit', 'update'],  'module:suppliers,edit')
+        ->middlewareFor(['destroy'],         'module:suppliers,delete');
     Route::patch('fornecedores/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])
-        ->name('suppliers.toggle-status');
+        ->middleware('module:suppliers,edit')->name('suppliers.toggle-status');
 
-    // Vendas
+    // Vendas (Comissão)
     Route::resource('vendas', SaleController::class)->parameters([
         'vendas' => 'sale',
     ])->names([
@@ -148,14 +165,20 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'sales.edit',
         'update'  => 'sales.update',
         'destroy' => 'sales.destroy',
-    ]);
-    Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])->name('sales.toggle');
+    // O controller não tem show(): sem isto, GET /vendas/5 estoura.
+    ])->except('show')
+        ->middlewareFor(['index'],           'module:commission_sales,view')
+        ->middlewareFor(['create', 'store'], 'module:commission_sales,create')
+        ->middlewareFor(['edit', 'update'],  'module:commission_sales,edit')
+        ->middlewareFor(['destroy'],         'module:commission_sales,delete');
+    Route::patch('vendas/{sale}/toggle', [SaleController::class, 'toggle'])
+        ->middleware('module:commission_sales,edit')->name('sales.toggle');
 
     // Clientes (rotas estáticas antes do resource)
     Route::get('clientes/resumo', [CustomerController::class, 'reportAll'])
-        ->name('customers.report-all');
+        ->middleware('module:customers,view')->name('customers.report-all');
     Route::get('clientes/{customer}/extrato', [CustomerController::class, 'report'])
-        ->name('customers.report');
+        ->middleware('module:customers,view')->name('customers.report');
 
     Route::resource('clientes', CustomerController::class)->parameters([
         'clientes' => 'customer',
@@ -167,17 +190,21 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'customers.edit',
         'update'  => 'customers.update',
         'destroy' => 'customers.destroy',
-    ]);
+    ])
+        ->middlewareFor(['index', 'show'],   'module:customers,view')
+        ->middlewareFor(['create', 'store'], 'module:customers,create')
+        ->middlewareFor(['edit', 'update'],  'module:customers,edit')
+        ->middlewareFor(['destroy'],         'module:customers,delete');
     Route::patch('clientes/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])
-        ->name('customers.toggle-status');
+        ->middleware('module:customers,edit')->name('customers.toggle-status');
 
     // Vendas (novo módulo de pedidos — rotas estáticas antes do resource)
     Route::get('pedidos/historico-exclusao', [OrderController::class, 'trashed'])
-        ->name('orders.trashed');
+        ->middleware('module:orders,view')->name('orders.trashed');
     Route::get('pedidos/{order}/romaneio', [OrderController::class, 'romaneio'])
-        ->name('orders.romaneio');
+        ->middleware('module:orders,view')->name('orders.romaneio');
     Route::post('pedidos/{order}/desbloquear-edicao', [OrderController::class, 'unlockEdit'])
-        ->name('orders.unlock-edit');
+        ->middleware('module:orders,edit')->name('orders.unlock-edit');
     Route::resource('pedidos', OrderController::class)->parameters([
         'pedidos' => 'order',
     ])->names([
@@ -188,45 +215,63 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'orders.edit',
         'update'  => 'orders.update',
         'destroy' => 'orders.destroy',
-    ]);
+    ])
+        ->middlewareFor(['index', 'show'],   'module:orders,view')
+        ->middlewareFor(['create', 'store'], 'module:orders,create')
+        ->middlewareFor(['edit', 'update'],  'module:orders,edit')
+        ->middlewareFor(['destroy'],         'module:orders,delete');
 
-    // Recebimentos
-    Route::get('recebimentos', [ReceivableController::class, 'index'])->name('receivables.index');
-    Route::get('recebimentos/{order}', [ReceivableController::class, 'show'])->name('receivables.show');
+    // Recebimentos (módulo próprio: mexe com dinheiro, separado de Vendas)
+    Route::get('recebimentos', [ReceivableController::class, 'index'])
+        ->middleware('module:receivables,view')->name('receivables.index');
+    Route::get('recebimentos/{order}', [ReceivableController::class, 'show'])
+        ->middleware('module:receivables,view')->name('receivables.show');
     Route::post('recebimentos/{order}/pagamento', [ReceivableController::class, 'storePayment'])
-        ->name('receivables.payments.store');
+        ->middleware('module:receivables,create')->name('receivables.payments.store');
     Route::put('recebimentos/pagamentos/{payment}', [ReceivableController::class, 'updatePayment'])
-        ->name('receivables.payments.update');
+        ->middleware('module:receivables,edit')->name('receivables.payments.update');
     Route::post('recebimentos/pagamentos/{payment}/comprovante', [ReceivableController::class, 'storeReceipt'])
-        ->name('receivables.receipt.store');
+        ->middleware('module:receivables,edit')->name('receivables.receipt.store');
     Route::delete('recebimentos/pagamentos/{payment}/comprovante', [ReceivableController::class, 'destroyReceipt'])
-        ->name('receivables.receipt.destroy');
+        ->middleware('module:receivables,edit')->name('receivables.receipt.destroy');
 
     // Configurações — Dados da Empresa
     Route::get('configuracoes/empresa', [CompanySettingsController::class, 'edit'])
-        ->name('company.settings.edit');
+        ->middleware('module:company_settings,view')->name('company.settings.edit');
     Route::put('configuracoes/empresa', [CompanySettingsController::class, 'update'])
-        ->name('company.settings.update');
+        ->middleware('module:company_settings,edit')->name('company.settings.update');
+
+    // Configurações — Usuários (exclusivo do dono)
+    Route::middleware('owner')->group(function () {
+        Route::get('configuracoes/usuarios', [UserController::class, 'index'])->name('users.index');
+        Route::post('configuracoes/usuarios', [UserController::class, 'store'])->name('users.store');
+        Route::put('configuracoes/usuarios/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('configuracoes/usuarios/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::patch('configuracoes/usuarios/{user}/status', [UserController::class, 'toggleStatus'])
+            ->name('users.toggle-status');
+        Route::post('configuracoes/usuarios/{user}/senha', [UserController::class, 'resetPassword'])
+            ->name('users.reset-password');
+    });
 
     // Configurações — Conectar Bot (WhatsApp)
     Route::get('configuracoes/bot', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'edit'])
-        ->name('bot.edit');
+        ->middleware('module:bot,view')->name('bot.edit');
     Route::post('configuracoes/bot/conectar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'connect'])
-        ->name('bot.connect');
+        ->middleware('module:bot,edit')->name('bot.connect');
     Route::get('configuracoes/bot/status', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'status'])
-        ->name('bot.status');
+        ->middleware('module:bot,view')->name('bot.status');
     Route::post('configuracoes/bot/desconectar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'disconnect'])
-        ->name('bot.disconnect');
+        ->middleware('module:bot,edit')->name('bot.disconnect');
     Route::post('configuracoes/bot/numeros', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'storeNumber'])
-        ->name('bot.numbers.store');
+        ->middleware('module:bot,edit')->name('bot.numbers.store');
     Route::delete('configuracoes/bot/numeros/{number}', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'destroyNumber'])
-        ->name('bot.numbers.destroy');
+        ->middleware('module:bot,edit')->name('bot.numbers.destroy');
     Route::patch('configuracoes/bot/numeros/{number}/notificacoes', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'toggleNumberNotifications'])
-        ->name('bot.numbers.toggle-notifications');
+        ->middleware('module:bot,edit')->name('bot.numbers.toggle-notifications');
     Route::put('configuracoes/bot/notificacao', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'saveNotification'])
-        ->name('bot.notification.save');
+        ->middleware('module:bot,edit')->name('bot.notification.save');
     Route::post('configuracoes/bot/notificacao/testar', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'sendTestNotification'])
-        ->name('bot.notification.test');
+        ->middleware('module:bot,edit')->name('bot.notification.test');
 
     // Configurações — Contas Bancárias
     Route::resource('configuracoes/contas', BankAccountController::class)->parameters([
@@ -237,17 +282,21 @@ Route::middleware('auth')->group(function () {
         'show'    => 'bank-accounts.show',
         'update'  => 'bank-accounts.update',
         'destroy' => 'bank-accounts.destroy',
-    ])->only(['index', 'store', 'show', 'update', 'destroy']);
+    ])->only(['index', 'store', 'show', 'update', 'destroy'])
+        ->middlewareFor(['index', 'show'], 'module:bank_accounts,view')
+        ->middlewareFor(['store'],         'module:bank_accounts,create')
+        ->middlewareFor(['update'],        'module:bank_accounts,edit')
+        ->middlewareFor(['destroy'],       'module:bank_accounts,delete');
     Route::patch('configuracoes/contas/{bankAccount}/toggle-status', [BankAccountController::class, 'toggleStatus'])
-        ->name('bank-accounts.toggle-status');
+        ->middleware('module:bank_accounts,edit')->name('bank-accounts.toggle-status');
 
     // Matéria-Prima — movimentação de estoque (rotas estáticas antes do resource)
     Route::get('materia-prima/movimentacao/nova', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'create'])
-        ->name('raw-materials.movements.create');
+        ->middleware('module:raw_materials,create')->name('raw-materials.movements.create');
     Route::post('materia-prima/movimentacao', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'store'])
-        ->name('raw-materials.movements.store');
+        ->middleware('module:raw_materials,create')->name('raw-materials.movements.store');
     Route::get('materia-prima/movimentacao/historico', [\App\Http\Controllers\RawMaterial\RawMaterialMovementController::class, 'history'])
-        ->name('raw-materials.movements.history');
+        ->middleware('module:raw_materials,view')->name('raw-materials.movements.history');
 
     // Matéria-Prima
     Route::resource('materia-prima', RawMaterialController::class)->parameters([
@@ -259,13 +308,17 @@ Route::middleware('auth')->group(function () {
         'edit'    => 'raw-materials.edit',
         'update'  => 'raw-materials.update',
         'destroy' => 'raw-materials.destroy',
-    ])->except('show');
+    ])->except('show')
+        ->middlewareFor(['index'],           'module:raw_materials,view')
+        ->middlewareFor(['create', 'store'], 'module:raw_materials,create')
+        ->middlewareFor(['edit', 'update'],  'module:raw_materials,edit')
+        ->middlewareFor(['destroy'],         'module:raw_materials,delete');
     Route::patch('materia-prima/{rawMaterial}/toggle-status', [RawMaterialController::class, 'toggleStatus'])
-        ->name('raw-materials.toggle-status');
+        ->middleware('module:raw_materials,edit')->name('raw-materials.toggle-status');
     Route::patch('materia-prima/{rawMaterial}/preco', [RawMaterialController::class, 'updatePrice'])
-        ->name('raw-materials.update-price');
+        ->middleware('module:raw_materials,edit')->name('raw-materials.update-price');
     Route::get('materia-prima/{rawMaterial}/historico-precos', [RawMaterialController::class, 'priceHistory'])
-        ->name('raw-materials.price-history');
+        ->middleware('module:raw_materials,view')->name('raw-materials.price-history');
 });
 
 // -----------------------------------------------

@@ -13,6 +13,7 @@ import {
     LogOut,
 } from 'lucide-react';
 import { useState } from 'react';
+import { can as canDo } from '@/lib/permissions';
 
 function NavItem({ href, icon: Icon, label, active }) {
     return (
@@ -90,9 +91,87 @@ function resolveOpenGroup(url) {
     return null;
 }
 
+/**
+ * Menu, em forma de dados, para poder ser filtrado por permissão.
+ *
+ * `module` é o slug em App\Support\Permissions; um item só aparece se o
+ * usuário tiver a ação correspondente, e um grupo sem nenhum item some
+ * inteiro. Esconder aqui é só conforto — quem barra de verdade é o
+ * middleware das rotas.
+ */
+const NAV_GROUPS = [
+    {
+        key: 'sellers', module: 'sellers', icon: Users, label: 'Vendedores',
+        items: [
+            { label: 'Cadastrar', route: 'sellers.create', action: 'create', active: u => u === '/vendedores/criar' },
+            { label: 'Gerenciar', route: 'sellers.index',  action: 'view',   active: u => u === '/vendedores' },
+        ],
+    },
+    {
+        key: 'orders', module: 'orders', icon: ShoppingCart, label: 'Vendas',
+        items: [
+            { label: 'Registrar Venda', route: 'orders.create', action: 'create', active: u => u === '/pedidos/create' },
+            { label: 'Gerenciar',       route: 'orders.index',  action: 'view',   active: u => u === '/pedidos' },
+            {
+                label: 'Recebimentos', route: 'receivables.index',
+                module: 'receivables', action: 'view', badge: true,
+                active: u => u.startsWith('/recebimentos'),
+            },
+        ],
+    },
+    {
+        key: 'customers', module: 'customers', icon: Contact, label: 'Clientes',
+        items: [
+            { label: 'Cadastrar', route: 'customers.create', action: 'create', active: u => u === '/clientes/create' },
+            { label: 'Gerenciar', route: 'customers.index',  action: 'view',   active: u => u === '/clientes' },
+        ],
+    },
+    {
+        key: 'commissions', module: 'commission_sales', icon: Receipt, label: 'Vendas (Comissão)',
+        items: [
+            { label: 'Registrar', route: 'sales.create', action: 'create', active: u => u === '/vendas/criar' },
+            { label: 'Gerenciar', route: 'sales.index',  action: 'view',   active: u => u === '/vendas' },
+        ],
+    },
+    {
+        key: 'suppliers', module: 'suppliers', icon: Truck, label: 'Fornecedores',
+        items: [
+            { label: 'Cadastrar', route: 'suppliers.create', action: 'create', active: u => u === '/fornecedores/create' },
+            { label: 'Gerenciar', route: 'suppliers.index',  action: 'view',   active: u => u === '/fornecedores' },
+        ],
+    },
+    {
+        key: 'rawMaterials', module: 'raw_materials', icon: FlaskConical, label: 'Matéria-Prima',
+        items: [
+            { label: 'Cadastrar', route: 'raw-materials.create', action: 'create', active: u => u === '/materia-prima/create' },
+            { label: 'Gerenciar', route: 'raw-materials.index',  action: 'view',   active: u => u === '/materia-prima' },
+        ],
+    },
+    {
+        key: 'products', module: 'products', icon: Package, label: 'Produtos',
+        items: [
+            { label: 'Cadastrar', route: 'products.create', action: 'create', active: u => u === '/produtos/criar' },
+            { label: 'Gerenciar', route: 'products.index',  action: 'view',   active: u => u === '/produtos' },
+        ],
+    },
+    {
+        key: 'settings', icon: Settings, label: 'Configurações',
+        items: [
+            { label: 'Dados da Empresa', route: 'company.settings.edit', module: 'company_settings', action: 'view', active: u => u.startsWith('/configuracoes/empresa') },
+            { label: 'Contas Bancárias', route: 'bank-accounts.index',   module: 'bank_accounts',    action: 'view', active: u => u.startsWith('/configuracoes/contas') },
+            { label: 'Conectar Bot',     route: 'bot.edit',              module: 'bot',              action: 'view', active: u => u.startsWith('/configuracoes/bot') },
+            { label: 'Usuários',         route: 'users.index',           ownerOnly: true,                            active: u => u.startsWith('/configuracoes/usuarios') },
+        ],
+    },
+];
+
 export default function Sidebar() {
     const { url, props } = usePage();
     const company = props.auth?.company;
+
+    const permissions = props.auth?.permissions;
+    const isOwner     = props.auth?.user?.is_owner === true;
+    const can         = (module, action = 'view') => canDo(permissions, module, action);
 
     // Cobranças vencidas + vencendo hoje (bolinha vermelha em Recebimentos)
     const alert = props.receivablesAlert;
@@ -103,6 +182,16 @@ export default function Sidebar() {
     function toggle(name) {
         setOpenGroup(prev => (prev === name ? null : name));
     }
+
+    // Grupo sem nenhum item permitido não é exibido.
+    const visibleGroups = NAV_GROUPS
+        .map(group => ({
+            ...group,
+            items: group.items.filter(item =>
+                item.ownerOnly ? isOwner : can(item.module ?? group.module, item.action)
+            ),
+        }))
+        .filter(group => group.items.length > 0);
 
     return (
         <aside className="w-60 h-screen bg-white border-r border-gray-200 flex flex-col shrink-0">
@@ -122,173 +211,42 @@ export default function Sidebar() {
             {/* Nav */}
             <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
 
-                <NavItem
-                    href={route('dashboard')}
-                    icon={LayoutDashboard}
-                    label="Dashboard"
-                    active={url === '/dashboard'}
-                />
+                {can('dashboard') && (
+                    <NavItem
+                        href={route('dashboard')}
+                        icon={LayoutDashboard}
+                        label="Dashboard"
+                        active={url === '/dashboard'}
+                    />
+                )}
 
-                <div className="mt-3">
-                    <p className="px-3 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                        Gestão
-                    </p>
+                {visibleGroups.length > 0 && (
+                    <div className="mt-3">
+                        <p className="px-3 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                            Gestão
+                        </p>
 
-                    <NavGroup
-                        icon={Users}
-                        label="Vendedores"
-                        open={openGroup === 'sellers'}
-                        onToggle={() => toggle('sellers')}
-                    >
-                        <SubNavItem
-                            href={route('sellers.create')}
-                            label="Cadastrar"
-                            active={url === '/vendedores/criar'}
-                        />
-                        <SubNavItem
-                            href={route('sellers.index')}
-                            label="Gerenciar"
-                            active={url === '/vendedores'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={ShoppingCart}
-                        label="Vendas"
-                        open={openGroup === 'orders'}
-                        onToggle={() => toggle('orders')}
-                    >
-                        <SubNavItem
-                            href={route('orders.create')}
-                            label="Registrar Venda"
-                            active={url === '/pedidos/create'}
-                        />
-                        <SubNavItem
-                            href={route('orders.index')}
-                            label="Gerenciar"
-                            active={url === '/pedidos'}
-                        />
-                        <SubNavItem
-                            href={route('receivables.index')}
-                            label="Recebimentos"
-                            active={url.startsWith('/recebimentos')}
-                            badge={dueCount}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={Contact}
-                        label="Clientes"
-                        open={openGroup === 'customers'}
-                        onToggle={() => toggle('customers')}
-                    >
-                        <SubNavItem
-                            href={route('customers.create')}
-                            label="Cadastrar"
-                            active={url === '/clientes/create'}
-                        />
-                        <SubNavItem
-                            href={route('customers.index')}
-                            label="Gerenciar"
-                            active={url === '/clientes'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={Receipt}
-                        label="Vendas (Comissão)"
-                        open={openGroup === 'commissions'}
-                        onToggle={() => toggle('commissions')}
-                    >
-                        <SubNavItem
-                            href={route('sales.create')}
-                            label="Registrar"
-                            active={url === '/vendas/criar'}
-                        />
-                        <SubNavItem
-                            href={route('sales.index')}
-                            label="Gerenciar"
-                            active={url === '/vendas'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={Truck}
-                        label="Fornecedores"
-                        open={openGroup === 'suppliers'}
-                        onToggle={() => toggle('suppliers')}
-                    >
-                        <SubNavItem
-                            href={route('suppliers.create')}
-                            label="Cadastrar"
-                            active={url === '/fornecedores/create'}
-                        />
-                        <SubNavItem
-                            href={route('suppliers.index')}
-                            label="Gerenciar"
-                            active={url === '/fornecedores'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={FlaskConical}
-                        label="Matéria-Prima"
-                        open={openGroup === 'rawMaterials'}
-                        onToggle={() => toggle('rawMaterials')}
-                    >
-                        <SubNavItem
-                            href={route('raw-materials.create')}
-                            label="Cadastrar"
-                            active={url === '/materia-prima/create'}
-                        />
-                        <SubNavItem
-                            href={route('raw-materials.index')}
-                            label="Gerenciar"
-                            active={url === '/materia-prima'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={Package}
-                        label="Produtos"
-                        open={openGroup === 'products'}
-                        onToggle={() => toggle('products')}
-                    >
-                        <SubNavItem
-                            href={route('products.create')}
-                            label="Cadastrar"
-                            active={url === '/produtos/criar'}
-                        />
-                        <SubNavItem
-                            href={route('products.index')}
-                            label="Gerenciar"
-                            active={url === '/produtos'}
-                        />
-                    </NavGroup>
-
-                    <NavGroup
-                        icon={Settings}
-                        label="Configurações"
-                        open={openGroup === 'settings'}
-                        onToggle={() => toggle('settings')}
-                    >
-                        <SubNavItem
-                            href={route('company.settings.edit')}
-                            label="Dados da Empresa"
-                            active={url.startsWith('/configuracoes/empresa')}
-                        />
-                        <SubNavItem
-                            href={route('bank-accounts.index')}
-                            label="Contas Bancárias"
-                            active={url.startsWith('/configuracoes/contas')}
-                        />
-                        <SubNavItem
-                            href={route('bot.edit')}
-                            label="Conectar Bot"
-                            active={url.startsWith('/configuracoes/bot')}
-                        />
-                    </NavGroup>
-                </div>
+                        {visibleGroups.map(group => (
+                            <NavGroup
+                                key={group.key}
+                                icon={group.icon}
+                                label={group.label}
+                                open={openGroup === group.key}
+                                onToggle={() => toggle(group.key)}
+                            >
+                                {group.items.map(item => (
+                                    <SubNavItem
+                                        key={item.route}
+                                        href={route(item.route)}
+                                        label={item.label}
+                                        active={item.active(url)}
+                                        badge={item.badge ? dueCount : undefined}
+                                    />
+                                ))}
+                            </NavGroup>
+                        ))}
+                    </div>
+                )}
             </nav>
 
             {/* Footer */}
