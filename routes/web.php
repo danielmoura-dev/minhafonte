@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Usuário sem nenhum módulo liberado (o dono precisa ajustar as permissões)
+    Route::get('/sem-acesso', fn () => Inertia::render('NoAccess'))->name('sem-acesso');
+
     // Vendedores
     Route::resource('vendedores', SellerController::class)->parameters([
         'vendedores' => 'seller',

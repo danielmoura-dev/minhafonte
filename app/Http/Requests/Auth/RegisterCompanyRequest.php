@@ -18,7 +18,9 @@ class RegisterCompanyRequest extends FormRequest
             'company_name' => ['required', 'string', 'max:150'],
             'fantasy_name' => ['required', 'string', 'max:150'],
             'cnpj'         => ['required', 'string', 'size:18', 'unique:companies,cnpj'],
-            'email'        => ['required', 'email', 'max:150', 'unique:companies,email'],
+            // Precisa ser único também entre os usuários: o e-mail do cadastro
+            // vira o login do dono, e `users.email` tem índice único global.
+            'email'        => ['required', 'email', 'max:150', 'unique:companies,email', 'unique:users,email'],
             'password'     => [
                 'required',
                 'confirmed',
