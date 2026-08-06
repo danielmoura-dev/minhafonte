@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendBotNotificationJob;
 use App\Models\BotAllowedNumber;
 use App\Models\BotNotification;
 use App\Models\WhatsappBot;
@@ -97,20 +98,33 @@ class WhatsAppBotController extends Controller
 
     /**
      * Dispara o resumo diário agora, para o usuário validar o formato.
+     * Roda na fila (mostra "gravando/digitando..." com pausas reais entre
+     * as mensagens), então a tela não trava esperando o envio terminar.
      */
-    public function sendTestNotification(BotNotificationService $service): RedirectResponse
+    public function sendTestNotification(): RedirectResponse
     {
-        $notification = BotNotification::fromCompany(Auth::id())
+        $companyId = Auth::id();
+
+        $connected = WhatsappBot::fromCompany($companyId)->where('status', 'connected')->exists();
+        if (! $connected) {
+            return back()->with('error', 'Conecte o bot antes de enviar notificações.');
+        }
+
+        $recipients = BotAllowedNumber::fromCompany($companyId)
+            ->where('notifications_enabled', true)
+            ->count();
+
+        if ($recipients === 0) {
+            return back()->with('error', 'Nenhum número com notificações ativadas.');
+        }
+
+        $notification = BotNotification::fromCompany($companyId)
             ->where('type', BotNotification::TYPE_DAILY_SALES)
             ->first();
 
-        $sent = $service->sendDailySales(Auth::user(), $notification);
+        SendBotNotificationJob::dispatch($companyId, $notification?->id);
 
-        if ($sent === 0) {
-            return back()->with('error', 'Nada enviado: confira se o bot está conectado e se há números com notificações ativadas.');
-        }
-
-        return back()->with('success', "Resumo enviado agora para {$sent} número(s)!");
+        return back()->with('success', "Enviando para {$recipients} número(s)... deve chegar no WhatsApp em instantes.");
     }
 
     /**

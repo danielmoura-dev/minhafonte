@@ -77,12 +77,15 @@ class BotNotificationService
         foreach ($recipients as $recipient) {
             try {
                 if ($audioPath) {
+                    $this->showPresence($bot->instance_name, $recipient->phone, 'recording');
                     $this->evolution->sendAudio($bot->instance_name, $recipient->phone, $audioPath);
                 }
 
+                $this->showPresence($bot->instance_name, $recipient->phone, 'composing');
                 $this->evolution->sendText($bot->instance_name, $recipient->phone, $summaryText);
 
                 if ($itemsText !== null) {
+                    $this->showPresence($bot->instance_name, $recipient->phone, 'composing');
                     $this->evolution->sendText($bot->instance_name, $recipient->phone, $itemsText);
                 }
 
@@ -97,6 +100,26 @@ class BotNotificationService
         }
 
         return $sent;
+    }
+
+    /**
+     * Mostra "gravando áudio..."/"digitando..." por alguns segundos antes da
+     * próxima mensagem (efeito mais humano). A falha ao mostrar a presença
+     * nunca deve impedir o envio da mensagem em si.
+     */
+    private function showPresence(string $instanceName, string $phone, string $presence): void
+    {
+        $delay = max(0, (int) config('services.evolution.presence_delay', 5));
+
+        try {
+            $this->evolution->sendPresence($instanceName, $phone, $presence, $delay);
+        } catch (\Throwable) {
+            // presença é só estética — segue o envio normalmente
+        }
+
+        if ($delay > 0) {
+            sleep($delay);
+        }
     }
 
     /**

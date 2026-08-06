@@ -49,6 +49,9 @@ return [
         // Local (Laragon): http://fontepro.test (https auto-assinado falharia).
         // Produção: pode omitir — usa APP_URL.
         'webhook_base'  => env('EVOLUTION_WEBHOOK_BASE'),
+        // Segundos mostrando "gravando áudio..."/"digitando..." antes de cada
+        // envio nas notificações automáticas (efeito mais humano/natural).
+        'presence_delay' => env('EVOLUTION_PRESENCE_DELAY', 5),
     ],
 
     'gemini' => [

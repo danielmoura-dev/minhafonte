@@ -2,21 +2,22 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\SendBotNotificationJob;
 use App\Models\BotNotification;
-use App\Services\BotNotificationService;
 use Illuminate\Console\Command;
 
 /**
- * Roda a cada minuto pelo scheduler: envia as notificações do bot que
- * chegaram no horário configurado (1x por dia, tolerante a atrasos).
+ * Roda a cada minuto pelo scheduler: enfileira as notificações do bot que
+ * chegaram no horário configurado (1x por dia, tolerante a atrasos). O envio
+ * em si roda na fila, pois mostra "gravando/digitando..." com pausas reais.
  */
 class SendBotNotifications extends Command
 {
     protected $signature = 'bot:notifications';
 
-    protected $description = 'Envia as notificações automáticas do bot de WhatsApp que estiverem no horário';
+    protected $description = 'Enfileira as notificações automáticas do bot de WhatsApp que estiverem no horário';
 
-    public function handle(BotNotificationService $service): int
+    public function handle(): int
     {
         $due = BotNotification::with('company')
             ->where('enabled', true)
@@ -28,16 +29,20 @@ class SendBotNotifications extends Command
                 continue;
             }
 
-            $sent = match ($notification->type) {
-                BotNotification::TYPE_DAILY_SALES => $service->sendDailySales($notification->company, $notification),
-                default                           => 0,
-            };
-
-            // Marca como enviada mesmo com 0 destinatários alcançados para
-            // não tentar de novo a cada minuto (falhas ficam no log).
+            // Marca como enviada ANTES de enfileirar, para não disparar de
+            // novo a cada minuto enquanto o job aguarda a fila (falhas do
+            // envio em si ficam registradas no log, dentro do job).
             $notification->update(['last_sent_at' => now()]);
 
-            $this->line("{$notification->company->fantasy_name}: {$notification->type} -> {$sent} número(s)");
+            match ($notification->type) {
+                BotNotification::TYPE_DAILY_SALES => SendBotNotificationJob::dispatch(
+                    $notification->company_id,
+                    $notification->id,
+                ),
+                default => null,
+            };
+
+            $this->line("{$notification->company->fantasy_name}: {$notification->type} -> enfileirada");
         }
 
         return self::SUCCESS;

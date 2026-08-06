@@ -113,6 +113,21 @@ class EvolutionApiService
     }
 
     /**
+     * Mostra o indicador de presença no chat ("gravando áudio...",
+     * "digitando...") por `delaySeconds` antes da próxima mensagem.
+     *
+     * @param  string  $presence  'composing' (digitando), 'recording' (gravando áudio) ou 'paused'
+     */
+    public function sendPresence(string $instanceName, string $number, string $presence, int $delaySeconds = 0): void
+    {
+        $this->client()->post("/chat/sendPresence/{$instanceName}", [
+            'number'   => $number,
+            'presence' => $presence,
+            'delay'    => $delaySeconds * 1000,
+        ])->throw();
+    }
+
+    /**
      * Baixa a mídia (áudio) de uma mensagem em base64.
      */
     public function getMediaBase64(string $instanceName, string $messageId): ?array

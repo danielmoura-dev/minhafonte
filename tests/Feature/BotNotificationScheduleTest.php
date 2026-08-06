@@ -22,6 +22,9 @@ class BotNotificationScheduleTest extends TestCase
     {
         parent::setUp();
 
+        // Sem isso, cada envio pausaria de verdade (sleep) entre as mensagens.
+        config(['services.evolution.presence_delay' => 0]);
+
         $this->company = Company::create([
             'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '1',
             'email' => 't@e.com', 'password' => bcrypt('x'),
