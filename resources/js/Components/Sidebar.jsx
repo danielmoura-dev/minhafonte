@@ -103,7 +103,7 @@ const NAV_GROUPS = [
     {
         key: 'sellers', module: 'sellers', icon: Users, label: 'Vendedores',
         items: [
-            { label: 'Cadastrar', route: 'sellers.create', action: 'create', active: u => u === '/vendedores/criar' },
+            { label: 'Cadastrar', route: 'sellers.create', action: 'create', active: u => u === '/vendedores/create' },
             { label: 'Gerenciar', route: 'sellers.index',  action: 'view',   active: u => u === '/vendedores' },
         ],
     },
@@ -129,7 +129,7 @@ const NAV_GROUPS = [
     {
         key: 'commissions', module: 'commission_sales', icon: Receipt, label: 'Vendas (Comissão)',
         items: [
-            { label: 'Registrar', route: 'sales.create', action: 'create', active: u => u === '/vendas/criar' },
+            { label: 'Registrar', route: 'sales.create', action: 'create', active: u => u === '/vendas/create' },
             { label: 'Gerenciar', route: 'sales.index',  action: 'view',   active: u => u === '/vendas' },
         ],
     },
@@ -150,7 +150,7 @@ const NAV_GROUPS = [
     {
         key: 'products', module: 'products', icon: Package, label: 'Produtos',
         items: [
-            { label: 'Cadastrar', route: 'products.create', action: 'create', active: u => u === '/produtos/criar' },
+            { label: 'Cadastrar', route: 'products.create', action: 'create', active: u => u === '/produtos/create' },
             { label: 'Gerenciar', route: 'products.index',  action: 'view',   active: u => u === '/produtos' },
         ],
     },
