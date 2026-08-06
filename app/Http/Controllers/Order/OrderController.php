@@ -10,10 +10,10 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Services\AuditService;
 use App\Services\OrderStockService;
+use App\Support\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -25,7 +25,7 @@ class OrderController extends Controller
     {
         $this->authorize('viewAny', Order::class);
 
-        $orders = Order::fromCompany(Auth::id())
+        $orders = Order::fromCompany(Tenant::id())
             ->with('customer:id,name')
             ->when($request->customer_id, fn ($q, $v) => $q->where('customer_id', $v))
             ->when($request->date_from, fn ($q, $v) => $q->whereDate('issue_date', '>=', $v))
@@ -36,7 +36,7 @@ class OrderController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $customers = Customer::fromCompany(Auth::id())
+        $customers = Customer::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -56,7 +56,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', Order::class);
 
         $orders = Order::onlyTrashed()
-            ->fromCompany(Auth::id())
+            ->fromCompany(Tenant::id())
             ->with(['customer:id,name', 'items'])
             ->when($request->search, function ($q, $term) {
                 $q->where(fn ($sub) => $sub
@@ -112,7 +112,7 @@ class OrderController extends Controller
             }
         }
 
-        $products = Product::fromCompany(Auth::id())
+        $products = Product::fromCompany(Tenant::id())
             ->whereIn('id', collect($data['items'])->pluck('product_id'))
             ->get()
             ->keyBy('id');
@@ -122,7 +122,7 @@ class OrderController extends Controller
                 // Considera também as vendas excluídas para que um número nunca
                 // se repita (a venda excluída continua no banco, marcada).
                 $nextNumber = (Order::withTrashed()
-                    ->fromCompany(Auth::id())
+                    ->fromCompany(Tenant::id())
                     ->lockForUpdate()
                     ->max('order_number') ?? 0) + 1;
 
@@ -144,7 +144,7 @@ class OrderController extends Controller
                 });
 
                 $order = Order::create([
-                    'company_id'            => Auth::id(),
+                    'company_id'            => Tenant::id(),
                     'customer_id'           => $data['customer_id'],
                     'order_number'          => $nextNumber,
                     'issue_date'            => $data['issue_date'],
@@ -161,7 +161,7 @@ class OrderController extends Controller
                     'stock_action'          => $service->summarize($stockItems),
                     'payment_status'        => 'pending',
                     'paid_total'            => 0,
-                    'actor_name'            => $this->actorName(),
+                    'actor_name'            => Tenant::actorName(),
                     'notes'                 => $data['notes'] ?? null,
                 ]);
 
@@ -213,7 +213,7 @@ class OrderController extends Controller
 
         $request->validate(['admin_password' => ['required', 'string']]);
 
-        if (! Auth::user()->checkAdminPassword($request->input('admin_password'))) {
+        if (! Tenant::company()->checkAdminPassword($request->input('admin_password'))) {
             return back()->withErrors(['admin_password' => 'Senha incorreta.']);
         }
 
@@ -263,7 +263,7 @@ class OrderController extends Controller
         $data  = $request->validated();
         $force = (bool) ($data['force'] ?? false);
 
-        $products = Product::fromCompany(Auth::id())
+        $products = Product::fromCompany(Tenant::id())
             ->whereIn('id', collect($data['items'])->pluck('product_id'))
             ->get()
             ->keyBy('id');
@@ -358,7 +358,7 @@ class OrderController extends Controller
         if ($order->payment_status !== 'pending') {
             $request->validate(['admin_password' => ['required', 'string']]);
 
-            if (! Auth::user()->checkAdminPassword($request->input('admin_password'))) {
+            if (! Tenant::company()->checkAdminPassword($request->input('admin_password'))) {
                 return back()->withErrors(['admin_password' => 'Senha incorreta.']);
             }
         }
@@ -392,7 +392,7 @@ class OrderController extends Controller
 
         $pdf = Pdf::loadView('pdf.order-romaneio', [
             'order'   => $order,
-            'company' => Auth::user(),
+            'company' => Tenant::company(),
         ])->setPaper('a4', 'portrait');
 
         return $pdf->stream("romaneio-venda-{$order->order_number}.pdf");
@@ -400,7 +400,7 @@ class OrderController extends Controller
 
     private function customersForForm()
     {
-        return Customer::fromCompany(Auth::id())
+        return Customer::fromCompany(Tenant::id())
             ->where('is_active', true)
             ->orderBy('name')
             ->get([
@@ -411,7 +411,7 @@ class OrderController extends Controller
 
     private function productsForForm()
     {
-        return Product::fromCompany(Auth::id())
+        return Product::fromCompany(Tenant::id())
             ->where('active', true)
             ->withCount('recipeItems')
             ->orderBy('name')
@@ -427,12 +427,5 @@ class OrderController extends Controller
                 'photo'          => $p->photo,
             ])
             ->values();
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

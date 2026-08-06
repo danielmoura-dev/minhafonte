@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Seller;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,7 +13,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companyId = Auth::id();
+        $companyId = Tenant::id();
         $period    = $request->get('period', 'month');
         $month     = $request->get('month', now()->format('Y-m'));
 

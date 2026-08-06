@@ -10,11 +10,11 @@ use App\Models\WhatsappBot;
 use App\Services\AuditService;
 use App\Services\BotNotificationService;
 use App\Services\EvolutionApiService;
+use App\Support\Tenant;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,13 +26,13 @@ class WhatsAppBotController extends Controller
 
     public function edit(): Response
     {
-        $bot = WhatsappBot::fromCompany(Auth::id())->first();
+        $bot = WhatsappBot::fromCompany(Tenant::id())->first();
 
-        $numbers = BotAllowedNumber::fromCompany(Auth::id())
+        $numbers = BotAllowedNumber::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'phone', 'notifications_enabled']);
 
-        $notification = BotNotification::fromCompany(Auth::id())
+        $notification = BotNotification::fromCompany(Tenant::id())
             ->where('type', BotNotification::TYPE_DAILY_SALES)
             ->first();
 
@@ -50,7 +50,7 @@ class WhatsAppBotController extends Controller
      */
     public function toggleNumberNotifications(BotAllowedNumber $number): RedirectResponse
     {
-        abort_unless($number->company_id === Auth::id(), 403);
+        abort_unless($number->company_id === Tenant::id(), 403);
 
         $number->update(['notifications_enabled' => ! $number->notifications_enabled]);
 
@@ -79,7 +79,7 @@ class WhatsAppBotController extends Controller
         ]);
 
         BotNotification::updateOrCreate(
-            ['company_id' => Auth::id(), 'type' => BotNotification::TYPE_DAILY_SALES],
+            ['company_id' => Tenant::id(), 'type' => BotNotification::TYPE_DAILY_SALES],
             [
                 'enabled'    => $data['enabled'],
                 'send_time'  => $data['send_time'],
@@ -103,7 +103,7 @@ class WhatsAppBotController extends Controller
      */
     public function sendTestNotification(): RedirectResponse
     {
-        $companyId = Auth::id();
+        $companyId = Tenant::id();
 
         $connected = WhatsappBot::fromCompany($companyId)->where('status', 'connected')->exists();
         if (! $connected) {
@@ -132,7 +132,7 @@ class WhatsAppBotController extends Controller
      */
     public function connect(): JsonResponse
     {
-        $companyId = Auth::id();
+        $companyId = Tenant::id();
 
         $bot = WhatsappBot::firstOrCreate(
             ['company_id' => $companyId],
@@ -171,7 +171,7 @@ class WhatsAppBotController extends Controller
      */
     public function status(): JsonResponse
     {
-        $bot = WhatsappBot::fromCompany(Auth::id())->first();
+        $bot = WhatsappBot::fromCompany(Tenant::id())->first();
 
         if (! $bot) {
             return response()->json(['status' => 'disconnected', 'phone' => null]);
@@ -204,7 +204,7 @@ class WhatsAppBotController extends Controller
 
     public function disconnect(): RedirectResponse
     {
-        $bot = WhatsappBot::fromCompany(Auth::id())->first();
+        $bot = WhatsappBot::fromCompany(Tenant::id())->first();
 
         if ($bot) {
             try {
@@ -248,7 +248,7 @@ class WhatsAppBotController extends Controller
         }
 
         BotAllowedNumber::updateOrCreate(
-            ['company_id' => Auth::id(), 'phone' => $phone],
+            ['company_id' => Tenant::id(), 'phone' => $phone],
             ['name' => $data['name']],
         );
 
@@ -257,7 +257,7 @@ class WhatsAppBotController extends Controller
 
     public function destroyNumber(BotAllowedNumber $number): RedirectResponse
     {
-        abort_unless($number->company_id === Auth::id(), 403);
+        abort_unless($number->company_id === Tenant::id(), 403);
 
         $number->delete();
 

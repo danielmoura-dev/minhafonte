@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Order;
 
+use App\Support\Tenant;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class UpdateOrderRequest extends FormRequest
@@ -16,7 +16,7 @@ class UpdateOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id'           => ['required', Rule::exists('customers', 'id')->where('company_id', Auth::id())],
+            'customer_id'           => ['required', Rule::exists('customers', 'id')->where('company_id', Tenant::id())],
             'issue_date'            => ['required', 'date'],
             'due_date'              => ['nullable', 'date'],
 
@@ -29,7 +29,7 @@ class UpdateOrderRequest extends FormRequest
             'delivery_zip_code'     => ['nullable', 'string', 'max:9'],
 
             'items'                 => ['required', 'array', 'min:1'],
-            'items.*.product_id'    => ['required', Rule::exists('products', 'id')->where('company_id', Auth::id())],
+            'items.*.product_id'    => ['required', Rule::exists('products', 'id')->where('company_id', Tenant::id())],
             'items.*.quantity'      => ['required', 'numeric', 'gt:0'],
             'items.*.unit_price'    => ['required', 'numeric', 'min:0'],
             'items.*.stock_action'  => ['required', Rule::in(['none', 'deduct', 'produce'])],

@@ -10,9 +10,9 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Seller;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +22,7 @@ class SaleController extends Controller
     {
         $this->authorize('viewAny', Sale::class);
 
-        $sales = Sale::fromCompany(Auth::id())
+        $sales = Sale::fromCompany(Tenant::id())
             ->with(['seller', 'product'])
             ->when($request->seller_id, fn ($q, $v) =>
                 $q->where('seller_id', $v)
@@ -47,7 +47,7 @@ class SaleController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $sellers = Seller::fromCompany(Auth::id())
+        $sellers = Seller::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'seller_type']);
 
@@ -65,11 +65,11 @@ class SaleController extends Controller
     {
         $this->authorize('create', Sale::class);
 
-        $sellers = Seller::fromCompany(Auth::id())
+        $sellers = Seller::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'seller_type', 'default_commission']);
 
-        $products = Product::fromCompany(Auth::id())
+        $products = Product::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'default_price']);
 
@@ -84,7 +84,7 @@ class SaleController extends Controller
         $this->authorize('create', Sale::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id'] = Tenant::id();
 
         $data['total'] = round($data['unit_price'] * $data['quantity'], 2);
 
@@ -126,11 +126,11 @@ class SaleController extends Controller
     {
         $this->authorize('update', $sale);
 
-        $sellers = Seller::fromCompany(Auth::id())
+        $sellers = Seller::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'seller_type', 'default_commission']);
 
-        $products = Product::fromCompany(Auth::id())
+        $products = Product::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name', 'default_price']);
 

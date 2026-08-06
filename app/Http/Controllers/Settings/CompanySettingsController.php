@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\UpdateCompanySettingsRequest;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,7 +15,7 @@ class CompanySettingsController extends Controller
 {
     public function edit(): Response
     {
-        $company = Auth::user();
+        $company = Tenant::company();
 
         return Inertia::render('Settings/Company', [
             'company' => $company->only([
@@ -28,7 +28,7 @@ class CompanySettingsController extends Controller
 
     public function update(UpdateCompanySettingsRequest $request): RedirectResponse
     {
-        $company = Auth::user();
+        $company = Tenant::company();
 
         $data = $request->validated();
         unset($data['logo']);

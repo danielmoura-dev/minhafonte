@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialMovement;
 use App\Models\Supplier;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -23,13 +23,13 @@ class RawMaterialMovementController extends Controller
     {
         $this->authorize('viewAny', RawMaterial::class);
 
-        $materials = RawMaterial::fromCompany(Auth::id())
+        $materials = RawMaterial::fromCompany(Tenant::id())
             ->where('active', true)
             ->where('controls_stock', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'unit', 'current_price', 'current_stock', 'min_quantity', 'photo']);
 
-        $suppliers = Supplier::fromCompany(Auth::id())
+        $suppliers = Supplier::fromCompany(Tenant::id())
             ->where('active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -54,11 +54,11 @@ class RawMaterialMovementController extends Controller
             : ($type === 'saida' ? self::SAIDA_REASONS : []);
 
         $data = $request->validate([
-            'raw_material_id' => ['required', Rule::exists('raw_materials', 'id')->where('company_id', Auth::id())],
+            'raw_material_id' => ['required', Rule::exists('raw_materials', 'id')->where('company_id', Tenant::id())],
             'type'            => ['required', Rule::in(['entrada', 'saida'])],
             'reason'          => ['required', Rule::in($allowedReasons)],
             'quantity'        => ['required', 'numeric', 'gt:0'],
-            'supplier_id'     => [Rule::requiredIf($isCompra), 'nullable', Rule::exists('suppliers', 'id')->where('company_id', Auth::id())],
+            'supplier_id'     => [Rule::requiredIf($isCompra), 'nullable', Rule::exists('suppliers', 'id')->where('company_id', Tenant::id())],
             'unit_price'      => [Rule::requiredIf($isCompra), 'nullable', 'numeric', 'min:0'],
             'notes'           => ['nullable', 'string', 'max:1000'],
         ], [
@@ -71,7 +71,7 @@ class RawMaterialMovementController extends Controller
             'unit_price.required'      => 'Informe o valor unitário pago.',
         ]);
 
-        $material = RawMaterial::fromCompany(Auth::id())->findOrFail($data['raw_material_id']);
+        $material = RawMaterial::fromCompany(Tenant::id())->findOrFail($data['raw_material_id']);
 
         // Matéria-prima inativa não pode ser movimentada
         if (! $material->active) {
@@ -94,7 +94,7 @@ class RawMaterialMovementController extends Controller
 
         DB::transaction(function () use ($material, $type, $reason, $qty, $before, $after, $isCompra, $data, $unitPrice, $total) {
             RawMaterialMovement::create([
-                'company_id'      => Auth::id(),
+                'company_id'      => Tenant::id(),
                 'raw_material_id' => $material->id,
                 'supplier_id'     => $isCompra ? $data['supplier_id'] : null,
                 'type'            => $type,
@@ -104,7 +104,7 @@ class RawMaterialMovementController extends Controller
                 'total_price'     => $total,
                 'stock_before'    => $before,
                 'stock_after'     => $after,
-                'actor_name'      => $this->actorName(),
+                'actor_name'      => Tenant::actorName(),
                 'notes'           => $data['notes'] ?? null,
             ]);
 
@@ -120,7 +120,7 @@ class RawMaterialMovementController extends Controller
     {
         $this->authorize('viewAny', RawMaterial::class);
 
-        $movements = RawMaterialMovement::fromCompany(Auth::id())
+        $movements = RawMaterialMovement::fromCompany(Tenant::id())
             ->with(['rawMaterial:id,name,code,unit', 'supplier:id,name'])
             ->when($request->raw_material_id, fn ($q, $v) => $q->where('raw_material_id', $v))
             ->when($request->type, fn ($q, $v) => $q->where('type', $v))
@@ -132,8 +132,8 @@ class RawMaterialMovementController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $materials = RawMaterial::fromCompany(Auth::id())->orderBy('name')->get(['id', 'name', 'unit']);
-        $suppliers = Supplier::fromCompany(Auth::id())->orderBy('name')->get(['id', 'name']);
+        $materials = RawMaterial::fromCompany(Tenant::id())->orderBy('name')->get(['id', 'name', 'unit']);
+        $suppliers = Supplier::fromCompany(Tenant::id())->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('RawMaterials/MovementHistory', [
             'movements' => $movements,
@@ -141,12 +141,5 @@ class RawMaterialMovementController extends Controller
             'suppliers' => $suppliers,
             'filters'   => $request->only('raw_material_id', 'type', 'reason', 'supplier_id', 'date_from', 'date_to'),
         ]);
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

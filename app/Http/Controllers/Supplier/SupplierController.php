@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Supplier\StoreSupplierRequest;
 use App\Http\Requests\Supplier\UpdateSupplierRequest;
 use App\Models\Supplier;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,7 +18,7 @@ class SupplierController extends Controller
     {
         $this->authorize('viewAny', Supplier::class);
 
-        $suppliers = Supplier::fromCompany(Auth::id())
+        $suppliers = Supplier::fromCompany(Tenant::id())
             ->withCount('rawMaterialMovements')
             ->when($request->search, fn ($q, $s) =>
                 $q->where(fn ($w) =>
@@ -52,7 +52,7 @@ class SupplierController extends Controller
         $this->authorize('create', Supplier::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id'] = Tenant::id();
 
         Supplier::create($data);
 

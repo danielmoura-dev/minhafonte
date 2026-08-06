@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\RawMaterial\StoreRawMaterialRequest;
 use App\Http\Requests\RawMaterial\UpdateRawMaterialRequest;
 use App\Models\RawMaterial;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +19,7 @@ class RawMaterialController extends Controller
     {
         $this->authorize('viewAny', RawMaterial::class);
 
-        $materials = RawMaterial::fromCompany(Auth::id())
+        $materials = RawMaterial::fromCompany(Tenant::id())
             ->withCount('movements')
             ->when($request->search, fn ($q, $s) =>
                 $q->where(fn ($w) =>
@@ -35,7 +35,7 @@ class RawMaterialController extends Controller
             ->withQueryString();
 
         // Quantos itens (no total) estão abaixo do mínimo
-        $restockCount = RawMaterial::fromCompany(Auth::id())
+        $restockCount = RawMaterial::fromCompany(Tenant::id())
             ->where('active', true)
             ->where('controls_stock', true)
             ->whereColumn('current_stock', '<=', 'min_quantity')
@@ -62,7 +62,7 @@ class RawMaterialController extends Controller
         $this->authorize('create', RawMaterial::class);
 
         $data = $request->validated();
-        $data['company_id']    = Auth::id();
+        $data['company_id']    = Tenant::id();
         $data['current_stock'] = 0;
 
         // Sem controle de estoque: quantidade mínima não se aplica
@@ -83,7 +83,7 @@ class RawMaterialController extends Controller
             'difference'         => $material->current_price,
             'difference_percent' => null,
             'reason'             => 'Cadastro inicial',
-            'actor_name'         => $this->actorName(),
+            'actor_name'         => Tenant::actorName(),
         ]);
 
         return redirect()
@@ -185,7 +185,7 @@ class RawMaterialController extends Controller
             'difference'         => $diff,
             'difference_percent' => $pct,
             'reason'             => $data['reason'] ?? null,
-            'actor_name'         => $this->actorName(),
+            'actor_name'         => Tenant::actorName(),
         ]);
 
         $rawMaterial->update(['current_price' => $new]);
@@ -205,12 +205,5 @@ class RawMaterialController extends Controller
             'material'  => $rawMaterial,
             'histories' => $histories,
         ]);
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

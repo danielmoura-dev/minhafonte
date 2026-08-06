@@ -7,10 +7,10 @@ use App\Http\Requests\Seller\StoreSellerRequest;
 use App\Http\Requests\Seller\UpdateSellerRequest;
 use App\Models\Seller;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,7 +21,7 @@ class SellerController extends Controller
     {
         $this->authorize('viewAny', Seller::class);
 
-        $sellers = Seller::fromCompany(Auth::id())
+        $sellers = Seller::fromCompany(Tenant::id())
             ->withCount([
                 'sales',
                 'sales as pending_payments_count'     => fn ($q) => $q->where('payment_received', false),
@@ -62,7 +62,7 @@ class SellerController extends Controller
         $this->authorize('create', Seller::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id'] = Tenant::id();
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')->store('sellers/photos', 'public');
@@ -251,7 +251,7 @@ class SellerController extends Controller
 
         $pdf = Pdf::loadView('pdf.seller-report', [
             'seller'                 => $seller,
-            'company'                => Auth::user(),
+            'company'                => Tenant::company(),
             'dateFrom'               => $dateFrom,
             'dateTo'                 => $dateTo,
             'sections'               => $sections,

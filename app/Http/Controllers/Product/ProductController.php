@@ -7,9 +7,9 @@ use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,7 +20,7 @@ class ProductController extends Controller
     {
         $this->authorize('viewAny', Product::class);
 
-        $products = Product::fromCompany(Auth::id())
+        $products = Product::fromCompany(Tenant::id())
             ->withCount('sales', 'movements', 'recipeItems')
             ->when($request->search, fn ($q, $s) =>
                 $q->where(fn ($w) =>
@@ -36,7 +36,7 @@ class ProductController extends Controller
             ->withQueryString();
 
         // Quantos produtos (no total) estão abaixo do mínimo
-        $restockCount = Product::fromCompany(Auth::id())
+        $restockCount = Product::fromCompany(Tenant::id())
             ->where('active', true)
             ->where('controls_stock', true)
             ->whereColumn('current_stock', '<=', 'min_quantity')
@@ -47,11 +47,11 @@ class ProductController extends Controller
         // e exclui automaticamente itens de vendas excluídas (soft delete).
         $orderItemsByProduct = OrderItem::query()
             ->whereNotNull('product_id')
-            ->whereHas('order', fn ($q) => $q->where('company_id', Auth::id()))
+            ->whereHas('order', fn ($q) => $q->where('company_id', Tenant::id()))
             ->get(['product_id', 'quantity', 'subtotal'])
             ->groupBy('product_id');
 
-        $allProducts = Product::fromCompany(Auth::id())
+        $allProducts = Product::fromCompany(Tenant::id())
             ->get(['id', 'name', 'code', 'active']);
 
         $grandTotal = (float) $orderItemsByProduct->flatten()->sum('subtotal');
@@ -96,7 +96,7 @@ class ProductController extends Controller
         $this->authorize('create', Product::class);
 
         $data = $request->validated();
-        $data['company_id']    = Auth::id();
+        $data['company_id']    = Tenant::id();
         $data['current_stock'] = 0;
 
         // Sem controle de estoque: quantidade mínima não se aplica
@@ -117,7 +117,7 @@ class ProductController extends Controller
             'difference'         => $product->default_price,
             'difference_percent' => null,
             'reason'             => 'Cadastro inicial',
-            'actor_name'         => $this->actorName(),
+            'actor_name'         => Tenant::actorName(),
         ]);
 
         return redirect()
@@ -218,7 +218,7 @@ class ProductController extends Controller
             'difference'         => $diff,
             'difference_percent' => $pct,
             'reason'             => $data['reason'] ?? null,
-            'actor_name'         => $this->actorName(),
+            'actor_name'         => Tenant::actorName(),
         ]);
 
         $product->update(['default_price' => $new]);
@@ -238,12 +238,5 @@ class ProductController extends Controller
             'product'   => $product,
             'histories' => $histories,
         ]);
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

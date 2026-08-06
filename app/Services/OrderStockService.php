@@ -7,7 +7,7 @@ use App\Models\Product;
 use App\Models\ProductMovement;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialMovement;
-use Illuminate\Support\Facades\Auth;
+use App\Support\Tenant;
 
 class OrderStockService
 {
@@ -46,7 +46,7 @@ class OrderStockService
             return ['products' => [], 'materials' => []];
         }
 
-        $loaded = Product::fromCompany(Auth::id())
+        $loaded = Product::fromCompany(Tenant::id())
             ->with('recipeItems.rawMaterial:id,name,unit,controls_stock,current_stock')
             ->whereIn('id', $productIds)
             ->get()
@@ -179,7 +179,7 @@ class OrderStockService
             'quantity'     => $qty,
             'stock_before' => $before,
             'stock_after'  => $after,
-            'actor_name'   => $this->actorName(),
+            'actor_name'   => Tenant::actorName(),
             'notes'        => "Produção automática — Venda #{$order->order_number}",
         ]);
 
@@ -206,7 +206,7 @@ class OrderStockService
                 'quantity'            => $consumption,
                 'stock_before'        => $matBefore,
                 'stock_after'         => $matAfter,
-                'actor_name'          => $this->actorName(),
+                'actor_name'          => Tenant::actorName(),
                 'notes'               => "Produção de {$qty} un de {$product->name} — Venda #{$order->order_number}",
             ]);
 
@@ -239,7 +239,7 @@ class OrderStockService
             'quantity'     => $qty,
             'stock_before' => $before,
             'stock_after'  => $after,
-            'actor_name'   => $this->actorName(),
+            'actor_name'   => Tenant::actorName(),
             'notes'        => "Venda #{$order->order_number}",
         ]);
 
@@ -279,12 +279,5 @@ class OrderStockService
             }
             $pm->delete();
         }
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

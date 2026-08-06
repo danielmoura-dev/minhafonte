@@ -8,9 +8,9 @@ use App\Models\ProductMovement;
 use App\Models\RawMaterial;
 use App\Models\RawMaterialMovement;
 use App\Models\Supplier;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -25,7 +25,7 @@ class ProductMovementController extends Controller
     {
         $this->authorize('viewAny', Product::class);
 
-        $productsWithRecipes = Product::fromCompany(Auth::id())
+        $productsWithRecipes = Product::fromCompany(Tenant::id())
             ->where('active', true)
             ->where('controls_stock', true)
             ->with(['recipeItems.rawMaterial:id,name,unit,controls_stock,current_stock,photo'])
@@ -60,7 +60,7 @@ class ProductMovementController extends Controller
             ])->values()->all(),
         ])->all();
 
-        $suppliers = Supplier::fromCompany(Auth::id())
+        $suppliers = Supplier::fromCompany(Tenant::id())
             ->where('active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -87,11 +87,11 @@ class ProductMovementController extends Controller
             : ($type === 'saida' ? self::SAIDA_REASONS : []);
 
         $data = $request->validate([
-            'product_id'  => ['required', Rule::exists('products', 'id')->where('company_id', Auth::id())],
+            'product_id'  => ['required', Rule::exists('products', 'id')->where('company_id', Tenant::id())],
             'type'        => ['required', Rule::in(['entrada', 'saida'])],
             'reason'      => ['required', Rule::in($allowedReasons)],
             'quantity'    => ['required', 'numeric', 'gt:0'],
-            'supplier_id' => [Rule::requiredIf($isCompra), 'nullable', Rule::exists('suppliers', 'id')->where('company_id', Auth::id())],
+            'supplier_id' => [Rule::requiredIf($isCompra), 'nullable', Rule::exists('suppliers', 'id')->where('company_id', Tenant::id())],
             'unit_price'  => [Rule::requiredIf($isCompra), 'nullable', 'numeric', 'min:0'],
             'notes'       => ['nullable', 'string', 'max:1000'],
         ], [
@@ -104,7 +104,7 @@ class ProductMovementController extends Controller
             'unit_price.required'  => 'Informe o valor unitário pago.',
         ]);
 
-        $product = Product::fromCompany(Auth::id())->findOrFail($data['product_id']);
+        $product = Product::fromCompany(Tenant::id())->findOrFail($data['product_id']);
 
         if (! $product->active) {
             return back()->with('error', 'Produto inativo não pode ser movimentado.');
@@ -154,7 +154,7 @@ class ProductMovementController extends Controller
 
         DB::transaction(function () use ($product, $type, $reason, $qty, $before, $after, $isCompra, $isProducao, $data, $unitPrice, $total) {
             $productMovement = ProductMovement::create([
-                'company_id'   => Auth::id(),
+                'company_id'   => Tenant::id(),
                 'product_id'   => $product->id,
                 'supplier_id'  => $isCompra ? $data['supplier_id'] : null,
                 'type'         => $type,
@@ -164,7 +164,7 @@ class ProductMovementController extends Controller
                 'total_price'  => $total,
                 'stock_before' => $before,
                 'stock_after'  => $after,
-                'actor_name'   => $this->actorName(),
+                'actor_name'   => Tenant::actorName(),
                 'notes'        => $data['notes'] ?? null,
             ]);
 
@@ -183,7 +183,7 @@ class ProductMovementController extends Controller
                     }
 
                     RawMaterialMovement::create([
-                        'company_id'          => Auth::id(),
+                        'company_id'          => Tenant::id(),
                         'raw_material_id'     => $rawMat->id,
                         'product_movement_id' => $productMovement->id,
                         'type'                => 'saida',
@@ -191,7 +191,7 @@ class ProductMovementController extends Controller
                         'quantity'            => $consumption,
                         'stock_before'        => $matBefore,
                         'stock_after'         => $matAfter,
-                        'actor_name'          => $this->actorName(),
+                        'actor_name'          => Tenant::actorName(),
                         'notes'               => "Produção de {$qty} un de {$product->name}",
                     ]);
 
@@ -211,7 +211,7 @@ class ProductMovementController extends Controller
     {
         $this->authorize('viewAny', Product::class);
 
-        $movements = ProductMovement::fromCompany(Auth::id())
+        $movements = ProductMovement::fromCompany(Tenant::id())
             ->with(['product:id,name,code', 'supplier:id,name'])
             ->when($request->product_id, fn ($q, $v) => $q->where('product_id', $v))
             ->when($request->type, fn ($q, $v) => $q->where('type', $v))
@@ -223,8 +223,8 @@ class ProductMovementController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $products  = Product::fromCompany(Auth::id())->orderBy('name')->get(['id', 'name']);
-        $suppliers = Supplier::fromCompany(Auth::id())->orderBy('name')->get(['id', 'name']);
+        $products  = Product::fromCompany(Tenant::id())->orderBy('name')->get(['id', 'name']);
+        $suppliers = Supplier::fromCompany(Tenant::id())->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Products/MovementHistory', [
             'movements' => $movements,
@@ -232,12 +232,5 @@ class ProductMovementController extends Controller
             'suppliers' => $suppliers,
             'filters'   => $request->only('product_id', 'type', 'reason', 'supplier_id', 'date_from', 'date_to'),
         ]);
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }

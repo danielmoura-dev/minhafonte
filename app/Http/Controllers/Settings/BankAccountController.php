@@ -8,8 +8,8 @@ use App\Http\Requests\BankAccount\UpdateBankAccountRequest;
 use App\Models\BankAccount;
 use App\Models\OrderPayment;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,7 +19,7 @@ class BankAccountController extends Controller
     {
         $this->authorize('viewAny', BankAccount::class);
 
-        $accounts = BankAccount::fromCompany(Auth::id())
+        $accounts = BankAccount::fromCompany(Tenant::id())
             // Soma só o que entrou de vendas ativas (venda excluída não conta)
             ->withSum(['payments as received_total' => fn ($q) => $q->whereHas('order')], 'amount')
             ->withCount(['payments as received_count' => fn ($q) => $q->whereHas('order')])
@@ -27,7 +27,7 @@ class BankAccountController extends Controller
             ->get();
 
         // Pagamentos lançados sem conta vinculada (ex.: dinheiro em espécie)
-        $unlinked = OrderPayment::where('company_id', Auth::id())
+        $unlinked = OrderPayment::where('company_id', Tenant::id())
             ->whereNull('bank_account_id')
             ->whereHas('order')
             ->sum('amount');
@@ -43,7 +43,7 @@ class BankAccountController extends Controller
      */
     public function show(BankAccount $bankAccount): Response
     {
-        abort_unless($bankAccount->company_id === Auth::id(), 403);
+        abort_unless($bankAccount->company_id === Tenant::id(), 403);
 
         // Base: só pagamentos de vendas que ainda existem
         $base = fn () => OrderPayment::where('bank_account_id', $bankAccount->id)->whereHas('order');
@@ -91,7 +91,7 @@ class BankAccountController extends Controller
         $this->authorize('create', BankAccount::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id'] = Tenant::id();
 
         $account = BankAccount::create($data);
 

@@ -8,10 +8,10 @@ use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -23,7 +23,7 @@ class CustomerController extends Controller
     {
         $this->authorize('viewAny', Customer::class);
 
-        $customers = Customer::fromCompany(Auth::id())
+        $customers = Customer::fromCompany(Tenant::id())
             ->withCount('orders')
             ->withSum('orders as total_bought', 'total')
             ->withSum('orders as total_paid', 'paid_total')
@@ -54,7 +54,7 @@ class CustomerController extends Controller
      */
     private function companyStats(): array
     {
-        $companyId = Auth::id();
+        $companyId = Tenant::id();
 
         $orders = Order::fromCompany($companyId);
 
@@ -79,7 +79,7 @@ class CustomerController extends Controller
     {
         $this->authorize('view', $customer);
 
-        $orders = Order::fromCompany(Auth::id())
+        $orders = Order::fromCompany(Tenant::id())
             ->where('customer_id', $customer->id)
             ->with('items:id,order_id,product_name,quantity,subtotal')
             ->orderByDesc('issue_date')
@@ -131,7 +131,7 @@ class CustomerController extends Controller
         $dateFrom = $request->date_from;
         $dateTo   = $request->date_to;
 
-        $orders = Order::fromCompany(Auth::id())
+        $orders = Order::fromCompany(Tenant::id())
             ->where('customer_id', $customer->id)
             ->when($dateFrom, fn ($q, $v) => $q->whereDate('issue_date', '>=', $v))
             ->when($dateTo, fn ($q, $v) => $q->whereDate('issue_date', '<=', $v))
@@ -144,7 +144,7 @@ class CustomerController extends Controller
         $totalPaid   = round((float) $orders->sum('paid_total'), 2);
 
         $pdf = Pdf::loadView('pdf.customer-statement', [
-            'company'     => Auth::user(),
+            'company'     => Tenant::company(),
             'customer'    => $customer,
             'orders'      => $orders,
             'dateFrom'    => $dateFrom,
@@ -174,7 +174,7 @@ class CustomerController extends Controller
 
         $onlyOwing = $request->boolean('only_owing');
 
-        $customers = Customer::fromCompany(Auth::id())
+        $customers = Customer::fromCompany(Tenant::id())
             ->withCount('orders')
             ->withSum('orders as total_bought', 'total')
             ->withSum('orders as total_paid', 'paid_total')
@@ -185,7 +185,7 @@ class CustomerController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('pdf.customers-summary', [
-            'company'   => Auth::user(),
+            'company'   => Tenant::company(),
             'customers' => $customers,
             'onlyOwing' => $onlyOwing,
             'stats'     => $this->companyStats(),
@@ -206,7 +206,7 @@ class CustomerController extends Controller
         $this->authorize('create', Customer::class);
 
         $data = $request->validated();
-        $data['company_id'] = Auth::id();
+        $data['company_id'] = Tenant::id();
 
         $customer = Customer::create($data);
 

@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\RawMaterial;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -22,7 +22,7 @@ class ProductRecipeController extends Controller
         $product->load(['recipeItems.rawMaterial']);
 
         // Matérias-primas disponíveis para compor a receita (com preço vigente)
-        $materials = RawMaterial::fromCompany(Auth::id())
+        $materials = RawMaterial::fromCompany(Tenant::id())
             ->where('active', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'unit', 'current_price', 'photo']);
@@ -51,7 +51,7 @@ class ProductRecipeController extends Controller
 
         $data = $request->validate([
             'items'                   => ['present', 'array'],
-            'items.*.raw_material_id' => ['required', Rule::exists('raw_materials', 'id')->where('company_id', Auth::id())],
+            'items.*.raw_material_id' => ['required', Rule::exists('raw_materials', 'id')->where('company_id', Tenant::id())],
             'items.*.quantity'        => ['required', 'numeric', 'gt:0'],
         ], [
             'items.*.raw_material_id.required' => 'Selecione a matéria-prima.',

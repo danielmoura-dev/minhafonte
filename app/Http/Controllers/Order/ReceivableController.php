@@ -9,9 +9,9 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Services\AuditService;
+use App\Support\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -26,7 +26,7 @@ class ReceivableController extends Controller
         $status = $request->get('payment_status', 'open'); // open = pending + partial
         $today  = now()->toDateString();
 
-        $orders = Order::fromCompany(Auth::id())
+        $orders = Order::fromCompany(Tenant::id())
             ->with('customer:id,name')
             ->when($request->customer_id, fn ($q, $v) => $q->where('customer_id', $v))
             ->when($request->search, fn ($q, $v) =>
@@ -55,7 +55,7 @@ class ReceivableController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $customers = Customer::fromCompany(Auth::id())
+        $customers = Customer::fromCompany(Tenant::id())
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -63,8 +63,8 @@ class ReceivableController extends Controller
             'orders'    => $orders,
             'customers' => $customers,
             'alert'     => [
-                'due_today' => Order::fromCompany(Auth::id())->dueAlert()->whereDate('due_date', $today)->count(),
-                'overdue'   => Order::fromCompany(Auth::id())->dueAlert()->whereDate('due_date', '<', $today)->count(),
+                'due_today' => Order::fromCompany(Tenant::id())->dueAlert()->whereDate('due_date', $today)->count(),
+                'overdue'   => Order::fromCompany(Tenant::id())->dueAlert()->whereDate('due_date', '<', $today)->count(),
             ],
             'filters'   => array_merge(
                 $request->only('customer_id', 'search', 'date_from', 'date_to'),
@@ -79,7 +79,7 @@ class ReceivableController extends Controller
 
         $order->load(['customer:id,name', 'payments.bankAccount:id,name,bank']);
 
-        $bankAccounts = BankAccount::fromCompany(Auth::id())
+        $bankAccounts = BankAccount::fromCompany(Tenant::id())
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'bank']);
@@ -112,13 +112,13 @@ class ReceivableController extends Controller
         }
 
         $order->payments()->create([
-            'company_id'      => Auth::id(),
+            'company_id'      => Tenant::id(),
             'bank_account_id' => $data['bank_account_id'] ?? null,
             'amount'          => $amount,
             'method'          => $data['method'],
             'paid_at'         => $data['paid_at'],
             'notes'           => $data['notes'] ?? null,
-            'actor_name'      => $this->actorName(),
+            'actor_name'      => Tenant::actorName(),
             'receipt_path'    => $request->hasFile('receipt')
                 ? $request->file('receipt')->store('receipts', 'public')
                 : null,
@@ -142,7 +142,7 @@ class ReceivableController extends Controller
      */
     public function updatePayment(Request $request, OrderPayment $payment): RedirectResponse
     {
-        abort_unless($payment->company_id === Auth::id(), 403);
+        abort_unless($payment->company_id === Tenant::id(), 403);
 
         $order = $payment->order;   // null se a venda foi excluída
         abort_unless($order, 404);
@@ -154,7 +154,7 @@ class ReceivableController extends Controller
         $data = $request->validate([
             'amount'          => ['required', 'numeric', 'gt:0'],
             'method'          => ['required', Rule::in(['deposit', 'cash', 'cheque'])],
-            'bank_account_id' => ['nullable', Rule::exists('bank_accounts', 'id')->where('company_id', Auth::id())],
+            'bank_account_id' => ['nullable', Rule::exists('bank_accounts', 'id')->where('company_id', Tenant::id())],
             'paid_at'         => ['required', 'date'],
             'notes'           => ['nullable', 'string', 'max:1000'],
         ], [
@@ -203,7 +203,7 @@ class ReceivableController extends Controller
      */
     public function storeReceipt(Request $request, OrderPayment $payment): RedirectResponse
     {
-        abort_unless($payment->company_id === Auth::id(), 403);
+        abort_unless($payment->company_id === Tenant::id(), 403);
 
         $request->validate([
             'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
@@ -226,7 +226,7 @@ class ReceivableController extends Controller
 
     public function destroyReceipt(OrderPayment $payment): RedirectResponse
     {
-        abort_unless($payment->company_id === Auth::id(), 403);
+        abort_unless($payment->company_id === Tenant::id(), 403);
 
         if ($payment->receipt_path) {
             Storage::disk('public')->delete($payment->receipt_path);
@@ -239,12 +239,5 @@ class ReceivableController extends Controller
     private function money(float $value): string
     {
         return 'R$ ' . number_format($value, 2, ',', '.');
-    }
-
-    private function actorName(): ?string
-    {
-        $company = Auth::user();
-
-        return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;
     }
 }
