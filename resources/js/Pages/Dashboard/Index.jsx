@@ -2,7 +2,6 @@ import AppLayout from '@/Layouts/AppLayout';
 import { router } from '@inertiajs/react';
 import {
     DollarSign, Wallet, Clock, ShoppingCart,
-    TrendingUp, CheckCircle, AlertCircle,
     Package, Users, MapPin, Cake, Calendar,
 } from 'lucide-react';
 
@@ -72,8 +71,8 @@ function EmptyState({ label }) {
 export default function Dashboard({
     period, month,
     kpis,
-    topProducts, topSellers, byCity,
-    totalSellers, birthdayToday,
+    topProducts, topCustomers, byCity,
+    birthdayToday,
 }) {
     function applyFilter(newPeriod, newMonth) {
         router.get(route('dashboard'), { period: newPeriod, month: newMonth }, {
@@ -83,7 +82,7 @@ export default function Dashboard({
     }
 
     const maxProductTotal  = topProducts[0]?.total  ?? 0;
-    const maxSellerTotal   = topSellers[0]?.total   ?? 0;
+    const maxCustomerTotal = topCustomers[0]?.total ?? 0;
     const maxCityTotal     = byCity[0]?.total       ?? 0;
 
     const periodLabel = period === 'month'
@@ -139,18 +138,11 @@ export default function Dashboard({
             </div>
 
             {/* KPIs — Vendas */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
                 <KpiCard icon={DollarSign}   label="Total vendido"     value={fmt(kpis.total_sold)}     color="bg-primary-600" sub={`${kpis.sales_count} venda${kpis.sales_count !== 1 ? 's' : ''}`} />
                 <KpiCard icon={Wallet}       label="Recebido"          value={fmt(kpis.total_received)} color="bg-green-500" />
                 <KpiCard icon={Clock}        label="A receber"         value={fmt(kpis.total_pending)}  color="bg-amber-500" />
                 <KpiCard icon={ShoppingCart} label="Nº de vendas"      value={kpis.sales_count}         color="bg-blue-500" />
-            </div>
-
-            {/* KPIs — Comissões */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
-                <KpiCard icon={TrendingUp}   label="Comissão total"    value={fmt(kpis.commission_total)}   color="bg-violet-500" />
-                <KpiCard icon={CheckCircle}  label="Comissão paga"     value={fmt(kpis.commission_paid)}    color="bg-emerald-500" />
-                <KpiCard icon={AlertCircle}  label="Comissão pendente" value={fmt(kpis.commission_pending)} color="bg-rose-500" />
             </div>
 
             {/* Rankings */}
@@ -176,24 +168,20 @@ export default function Dashboard({
                     )}
                 </SectionCard>
 
-                <SectionCard title="Rank de vendedores" icon={Users}>
-                    {topSellers.length === 0 ? (
+                <SectionCard title="Rank de clientes" icon={Users}>
+                    {topCustomers.length === 0 ? (
                         <EmptyState label="Nenhuma venda no período." />
                     ) : (
                         <div className="flex flex-col gap-4">
-                            {topSellers.map((s, i) => (
+                            {topCustomers.map((c, i) => (
                                 <RankRow
                                     key={i}
                                     position={i}
-                                    name={s.name}
-                                    primary={s.total}
-                                    max={maxSellerTotal}
-                                    primaryLabel={fmt(s.total)}
-                                    secondaryLabel={
-                                        s.commission > 0
-                                            ? `${s.sales_count} venda${s.sales_count !== 1 ? 's' : ''} · comissão ${fmt(s.commission)}`
-                                            : `${s.sales_count} venda${s.sales_count !== 1 ? 's' : ''}`
-                                    }
+                                    name={c.name}
+                                    primary={c.total}
+                                    max={maxCustomerTotal}
+                                    primaryLabel={fmt(c.total)}
+                                    secondaryLabel={`${c.orders_count} compra${c.orders_count !== 1 ? 's' : ''}`}
                                 />
                             ))}
                         </div>
