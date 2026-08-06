@@ -3,24 +3,40 @@
 namespace App\Support;
 
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * Contexto da empresa logada na área administrativa.
  *
- * Todo acesso a dados é escopado por `company_id`, e este é o único lugar do
- * sistema que resolve esse id. Enquanto o guard `web` autentica a própria
- * Company, `id()` é simplesmente o id do autenticado — quando passarmos a
- * autenticar usuários da empresa, só o corpo destes métodos muda.
+ * Quem autentica é o usuário (`App\Models\User`); a empresa dona dos dados
+ * vem do `company_id` dele. Este é o único lugar do sistema que resolve esse
+ * id — nunca use `Auth::id()` para escopo, porque ali o id é do USUÁRIO, e
+ * usá-lo como `company_id` leria dados de outra empresa em silêncio.
  */
 final class Tenant
 {
     /**
+     * Usuário autenticado na área administrativa.
+     *
+     * O guard é explícito para nunca resolver o guard `seller` por engano.
+     */
+    public static function user(): ?User
+    {
+        /** @var User|null $user */
+        $user = Auth::guard('web')->user();
+
+        return $user;
+    }
+
+    /**
      * Id da empresa dona dos dados da requisição atual.
+     *
+     * Lê a coluna do usuário já carregado — sem query extra.
      */
     public static function id(): ?int
     {
-        return Auth::id();
+        return self::user()?->company_id;
     }
 
     /**
@@ -28,10 +44,7 @@ final class Tenant
      */
     public static function company(): ?Company
     {
-        /** @var Company|null $company (o guard `web` usa o provider `companies`) */
-        $company = Auth::user();
-
-        return $company;
+        return self::user()?->company;
     }
 
     /**
@@ -40,6 +53,12 @@ final class Tenant
      */
     public static function actorName(): ?string
     {
+        $user = self::user();
+
+        if ($user) {
+            return $user->name;
+        }
+
         $company = self::company();
 
         return $company?->fantasy_name ?? $company?->company_name ?? $company?->email;

@@ -25,7 +25,7 @@ class BotDailySummaryTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function sale(string $customerName, array $items, float $paid = 0): Order

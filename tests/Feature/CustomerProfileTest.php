@@ -23,7 +23,7 @@ class CustomerProfileTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function customer(string $name = 'cliente'): Customer
@@ -148,7 +148,7 @@ class CustomerProfileTest extends TestCase
             'email' => 'o@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($intruder)
+        $this->actingAsCompany($intruder)
             ->get(route('customers.show', $customer))
             ->assertForbidden();
     }

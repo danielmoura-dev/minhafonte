@@ -2,33 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
-use App\Models\RawMaterial;
-
-class RawMaterialPolicy
+/** Acesso ao módulo de matéria-prima. */
+class RawMaterialPolicy extends ModulePolicy
 {
-    public function viewAny(Company $company): bool
+    protected function module(): string
     {
-        return true;
-    }
-
-    public function view(Company $company, RawMaterial $rawMaterial): bool
-    {
-        return $rawMaterial->company_id === $company->id;
-    }
-
-    public function create(Company $company): bool
-    {
-        return true;
-    }
-
-    public function update(Company $company, RawMaterial $rawMaterial): bool
-    {
-        return $rawMaterial->company_id === $company->id;
-    }
-
-    public function delete(Company $company, RawMaterial $rawMaterial): bool
-    {
-        return $rawMaterial->company_id === $company->id;
+        return 'raw_materials';
     }
 }

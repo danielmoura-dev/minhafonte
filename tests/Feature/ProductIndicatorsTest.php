@@ -26,7 +26,7 @@ class ProductIndicatorsTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function product(string $name): Product

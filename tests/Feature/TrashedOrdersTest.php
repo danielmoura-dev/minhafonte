@@ -23,7 +23,7 @@ class TrashedOrdersTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function order(int $number, string $customerName = 'cliente'): Order
@@ -110,7 +110,7 @@ class TrashedOrdersTest extends TestCase
             'email' => 'o@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($intruder)
+        $this->actingAsCompany($intruder)
             ->get(route('orders.trashed'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('orders.data', 0));

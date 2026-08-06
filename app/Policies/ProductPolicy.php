@@ -2,33 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
-use App\Models\Product;
-
-class ProductPolicy
+/** Acesso ao módulo de produtos. */
+class ProductPolicy extends ModulePolicy
 {
-    public function viewAny(Company $company): bool
+    protected function module(): string
     {
-        return true;
-    }
-
-    public function view(Company $company, Product $product): bool
-    {
-        return $product->company_id === $company->id;
-    }
-
-    public function create(Company $company): bool
-    {
-        return true;
-    }
-
-    public function update(Company $company, Product $product): bool
-    {
-        return $product->company_id === $company->id;
-    }
-
-    public function delete(Company $company, Product $product): bool
-    {
-        return $product->company_id === $company->id;
+        return 'products';
     }
 }

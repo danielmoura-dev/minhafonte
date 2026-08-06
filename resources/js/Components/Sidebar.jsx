@@ -92,7 +92,7 @@ function resolveOpenGroup(url) {
 
 export default function Sidebar() {
     const { url, props } = usePage();
-    const company = props.auth?.user;
+    const company = props.auth?.company;
 
     // Cobranças vencidas + vencendo hoje (bolinha vermelha em Recebimentos)
     const alert = props.receivablesAlert;

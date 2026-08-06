@@ -23,7 +23,7 @@ class EditPaymentTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function order(float $total): Order
@@ -192,7 +192,7 @@ class EditPaymentTest extends TestCase
             'email' => 'o@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($intruder)
+        $this->actingAsCompany($intruder)
             ->put(route('receivables.payments.update', $payment), [
                 'amount' => 999, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
             ])

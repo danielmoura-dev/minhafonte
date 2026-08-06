@@ -31,7 +31,7 @@ class BankAccountTotalsTest extends TestCase
             'bank' => 'banco x', 'is_active' => true,
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function paidOrder(float $amount): Order
@@ -82,7 +82,7 @@ class BankAccountTotalsTest extends TestCase
         $this->assertEquals(200, $this->accountTotal());
 
         // Exclui a venda de R$ 50 pela rota (venda paga exige senha de admin)
-        $this->actingAs($this->company)
+        $this->actingAsCompany($this->company)
             ->delete(route('orders.destroy', $delete), ['admin_password' => 'adm'])
             ->assertRedirect();
 
@@ -103,11 +103,11 @@ class BankAccountTotalsTest extends TestCase
         $this->paidOrder(100);
         $deleted = $this->paidOrder(70);
 
-        $this->actingAs($this->company)
+        $this->actingAsCompany($this->company)
             ->delete(route('orders.destroy', $deleted), ['admin_password' => 'adm'])
             ->assertRedirect();
 
-        $this->actingAs($this->company)
+        $this->actingAsCompany($this->company)
             ->get(route('bank-accounts.show', $this->account))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -126,7 +126,7 @@ class BankAccountTotalsTest extends TestCase
             'email' => 'o@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($intruder)
+        $this->actingAsCompany($intruder)
             ->get(route('bank-accounts.show', $this->account))
             ->assertForbidden();
     }

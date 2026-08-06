@@ -6,14 +6,18 @@ use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\RawMaterial;
 use App\Models\Sale;
 use App\Models\Seller;
+use App\Models\Supplier;
 use App\Policies\BankAccountPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\ProductPolicy;
+use App\Policies\RawMaterialPolicy;
 use App\Policies\SalePolicy;
 use App\Policies\SellerPolicy;
+use App\Policies\SupplierPolicy;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -32,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
         Gate::policy(BankAccount::class, BankAccountPolicy::class);
+        Gate::policy(Supplier::class, SupplierPolicy::class);
+        Gate::policy(RawMaterial::class, RawMaterialPolicy::class);
 
         $this->configureEmails();
     }

@@ -38,14 +38,11 @@ return [
     */
 
     'guards' => [
+        // Área administrativa: quem autentica é o usuário; a empresa dele vem
+        // de `company_id` (ver App\Support\Tenant).
         'web' => [
             'driver'   => 'session',
-            'provider' => 'companies',
-        ],
-
-        'company' => [
-            'driver'   => 'session',
-            'provider' => 'companies',
+            'provider' => 'users',
         ],
 
         'seller' => [
@@ -108,8 +105,8 @@ return [
     */
 
     'passwords' => [
-        'companies' => [
-            'provider' => 'companies',
+        'users' => [
+            'provider' => 'users',
             'table'    => 'password_reset_tokens',
             'expire'   => 60,
             'throttle' => 60,

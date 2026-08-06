@@ -27,7 +27,7 @@ class PasswordResetLinkController extends Controller
             'email.email'    => 'Informe um e-mail válido.',
         ]);
 
-        Password::broker('companies')->sendResetLink(
+        Password::broker()->sendResetLink(
             $request->only('email')
         );
 

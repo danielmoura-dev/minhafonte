@@ -68,7 +68,7 @@ class PaidOrderEditCheckTest extends TestCase
             'company_id' => $company->id, 'code' => 'p1', 'name' => 'prod', 'default_price' => 10,
             'controls_stock' => true, 'min_quantity' => 0, 'current_stock' => 100, 'active' => true,
         ]);
-        $this->actingAs($company);
+        $this->actingAsCompany($company);
         $svc = app(\App\Services\OrderStockService::class);
 
         $order = Order::create([
@@ -103,7 +103,7 @@ class PaidOrderEditCheckTest extends TestCase
             'company_id' => $company->id, 'code' => 'p1', 'name' => 'prod', 'default_price' => 10,
             'controls_stock' => true, 'min_quantity' => 0, 'current_stock' => 100, 'active' => true,
         ]);
-        $this->actingAs($company);
+        $this->actingAsCompany($company);
         $svc = app(\App\Services\OrderStockService::class);
 
         $order = Order::create([

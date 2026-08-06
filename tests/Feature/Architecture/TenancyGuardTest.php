@@ -37,7 +37,7 @@ class TenancyGuardTest extends TestCase
         fwrite(STDERR, "\ntenancy: nenhum Auth::id() cru em app/ (só dentro de Tenant)\n");
     }
 
-    public function test_tenant_resolve_a_empresa_autenticada(): void
+    public function test_tenant_resolve_a_empresa_do_usuario_logado(): void
     {
         $company = \App\Models\Company::create([
             'company_name' => 'Teste', 'fantasy_name' => 'Teste Ltda', 'cnpj' => '1',
@@ -46,12 +46,33 @@ class TenancyGuardTest extends TestCase
 
         $this->assertNull(\App\Support\Tenant::id());
 
-        $this->actingAs($company);
+        $this->actingAsCompany($company);
+
+        // O id do usuário NÃO é o da empresa — é justamente essa distinção
+        // que o Tenant existe para resolver.
+        $this->assertNotSame($company->id, $this->actingUser->id);
 
         $this->assertSame($company->id, \App\Support\Tenant::id());
         $this->assertSame($company->id, \App\Support\Tenant::company()?->id);
-        $this->assertSame('TESTE LTDA', \App\Support\Tenant::actorName());
+        $this->assertSame($this->actingUser->id, \App\Support\Tenant::user()?->id);
 
-        fwrite(STDERR, "tenancy: Tenant::id()/company()/actorName() resolvem a empresa logada\n");
+        // A auditoria passa a registrar QUEM agiu, não mais a empresa.
+        $this->assertSame($this->actingUser->name, \App\Support\Tenant::actorName());
+
+        fwrite(STDERR, "tenancy: Tenant resolve a empresa a partir do usuário (ids diferentes)\n");
+    }
+
+    public function test_guard_web_autentica_usuario_e_nao_empresa(): void
+    {
+        $company = \App\Models\Company::create([
+            'company_name' => 'Teste', 'fantasy_name' => 'Teste', 'cnpj' => '2',
+            'email' => 't2@e.com', 'password' => bcrypt('x'),
+        ]);
+
+        $this->actingAsCompany($company);
+
+        $this->assertInstanceOf(\App\Models\User::class, auth('web')->user());
+
+        fwrite(STDERR, "tenancy: guard web autentica App\\Models\\User\n");
     }
 }

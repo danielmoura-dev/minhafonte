@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedCompanyController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\FirstAccessController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredCompanyController;
@@ -41,6 +42,12 @@ Route::middleware('guest')->group(function () {
     Route::post('/cadastro', [RegisteredCompanyController::class, 'store'])
         ->middleware('throttle:register')
         ->name('register.store');
+
+    // Primeiro acesso: conta criada pelo dono, senha definida pelo funcionário
+    Route::get('/primeiro-acesso', [FirstAccessController::class, 'create'])->name('first-access');
+    Route::post('/primeiro-acesso', [FirstAccessController::class, 'store'])
+        ->middleware('throttle:first-access')
+        ->name('first-access.store');
 
     Route::get('/esqueci-senha', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/esqueci-senha', [PasswordResetLinkController::class, 'store'])

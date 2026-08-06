@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use App\Casts\Uppercase;
-use App\Notifications\Auth\CompanyEmailVerificationNotification;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
-class Company extends Authenticatable implements MustVerifyEmail
+/**
+ * A empresa (o "tenant"): dona de todos os dados do sistema.
+ *
+ * Quem faz login são os usuários dela (`App\Models\User`) — a própria empresa
+ * já não autentica. As colunas `password`/`remember_token` continuam aqui
+ * apenas como histórico do modelo antigo; o login do dono usa o usuário.
+ */
+class Company extends Model
 {
     use HasFactory, Notifiable, SoftDeletes;
 
@@ -70,9 +75,18 @@ class Company extends Authenticatable implements MustVerifyEmail
         return Hash::check($input, $this->admin_password);
     }
 
-    public function sendEmailVerificationNotification(): void
+    public function users(): HasMany
     {
-        $this->notify(new CompanyEmailVerificationNotification());
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * O usuário-dono: criado junto com a empresa, ignora permissões e é o
+     * único que gerencia os demais.
+     */
+    public function owner(): HasMany
+    {
+        return $this->users()->where('is_owner', true);
     }
 
     public function sellers(): HasMany

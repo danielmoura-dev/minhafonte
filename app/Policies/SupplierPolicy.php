@@ -2,33 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
-use App\Models\Supplier;
-
-class SupplierPolicy
+/** Acesso ao módulo de fornecedores. */
+class SupplierPolicy extends ModulePolicy
 {
-    public function viewAny(Company $company): bool
+    protected function module(): string
     {
-        return true;
-    }
-
-    public function view(Company $company, Supplier $supplier): bool
-    {
-        return $supplier->company_id === $company->id;
-    }
-
-    public function create(Company $company): bool
-    {
-        return true;
-    }
-
-    public function update(Company $company, Supplier $supplier): bool
-    {
-        return $supplier->company_id === $company->id;
-    }
-
-    public function delete(Company $company, Supplier $supplier): bool
-    {
-        return $supplier->company_id === $company->id;
+        return 'suppliers';
     }
 }

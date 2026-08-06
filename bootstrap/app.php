@@ -46,6 +46,12 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(3)->by($request->ip());
         });
 
+        RateLimiter::for('first-access', function (Request $request) {
+            return Limit::perMinute(5)->by(
+                $request->input('email') . '|' . $request->ip()
+            );
+        });
+
         RateLimiter::for('seller-login', function (Request $request) {
             return Limit::perMinute(5)->by(
                 $request->input('email') . '|' . $request->ip()

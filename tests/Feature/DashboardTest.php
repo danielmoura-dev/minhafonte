@@ -26,7 +26,7 @@ class DashboardTest extends TestCase
             'email' => 't@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($this->company);
+        $this->actingAsCompany($this->company);
     }
 
     private function order(string $customerName, array $items, float $paid = 0, ?string $city = null): Order

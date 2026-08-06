@@ -101,7 +101,7 @@ class ReceivablesFeaturesTest extends TestCase
         $this->assertSame('due_today', $order->due_status);
 
         // Cliente paga R$ 40 (parcial) -> cobrança considerada atendida
-        $this->actingAs($company)->post(route('receivables.payments.store', $order), [
+        $this->actingAsCompany($company)->post(route('receivables.payments.store', $order), [
             'amount' => 40, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
         ])->assertRedirect();
 
@@ -121,7 +121,7 @@ class ReceivablesFeaturesTest extends TestCase
         $company = $this->company();
         $order   = $this->order($company, null);
 
-        $this->actingAs($company)->post(route('receivables.payments.store', $order), [
+        $this->actingAsCompany($company)->post(route('receivables.payments.store', $order), [
             'amount'  => 50,
             'method'  => 'cheque',
             'paid_at' => now()->format('Y-m-d H:i'),
@@ -146,7 +146,7 @@ class ReceivablesFeaturesTest extends TestCase
         $order   = $this->order($company, null);
 
         // Pagamento sem comprovante
-        $this->actingAs($company)->post(route('receivables.payments.store', $order), [
+        $this->actingAsCompany($company)->post(route('receivables.payments.store', $order), [
             'amount' => 50, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i'),
         ])->assertRedirect();
 
@@ -154,7 +154,7 @@ class ReceivablesFeaturesTest extends TestCase
         $this->assertNull($payment->receipt_path);
 
         // Anexa depois
-        $this->actingAs($company)->post(route('receivables.receipt.store', $payment), [
+        $this->actingAsCompany($company)->post(route('receivables.receipt.store', $payment), [
             'receipt' => UploadedFile::fake()->create('pix.pdf', 100, 'application/pdf'),
         ])->assertRedirect();
 
@@ -163,7 +163,7 @@ class ReceivablesFeaturesTest extends TestCase
         $this->assertTrue($payment->fresh()->receipt_is_pdf);
 
         // Troca: o arquivo antigo é removido
-        $this->actingAs($company)->post(route('receivables.receipt.store', $payment), [
+        $this->actingAsCompany($company)->post(route('receivables.receipt.store', $payment), [
             'receipt' => UploadedFile::fake()->image('novo.png'),
         ])->assertRedirect();
 
@@ -181,7 +181,7 @@ class ReceivablesFeaturesTest extends TestCase
 
         $owner   = $this->company();
         $order   = $this->order($owner, null);
-        $this->actingAs($owner)->post(route('receivables.payments.store', $order), [
+        $this->actingAsCompany($owner)->post(route('receivables.payments.store', $order), [
             'amount' => 10, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i'),
         ]);
         $payment = $order->payments()->first();
@@ -191,7 +191,7 @@ class ReceivablesFeaturesTest extends TestCase
             'email' => 'o@e.com', 'password' => bcrypt('x'),
         ]);
 
-        $this->actingAs($intruder)->post(route('receivables.receipt.store', $payment), [
+        $this->actingAsCompany($intruder)->post(route('receivables.receipt.store', $payment), [
             'receipt' => UploadedFile::fake()->image('x.jpg'),
         ])->assertForbidden();
 

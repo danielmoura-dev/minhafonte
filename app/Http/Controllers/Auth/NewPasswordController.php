@@ -31,15 +31,15 @@ class NewPasswordController extends Controller
             'password' => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
-        $status = Password::broker('companies')->reset(
+        $status = Password::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($company) use ($request) {
-                $company->forceFill([
+            function ($user) use ($request) {
+                $user->forceFill([
                     'password'       => Hash::make($request->password),
                     'remember_token' => Str::random(60),
                 ])->save();
 
-                event(new PasswordReset($company));
+                event(new PasswordReset($user));
             }
         );
 

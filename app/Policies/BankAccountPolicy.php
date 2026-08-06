@@ -2,28 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\BankAccount;
-use App\Models\Company;
-
-class BankAccountPolicy
+/** Acesso ao módulo de contas bancárias. */
+class BankAccountPolicy extends ModulePolicy
 {
-    public function viewAny(Company $company): bool
+    protected function module(): string
     {
-        return true;
-    }
-
-    public function create(Company $company): bool
-    {
-        return true;
-    }
-
-    public function update(Company $company, BankAccount $bankAccount): bool
-    {
-        return $bankAccount->company_id === $company->id;
-    }
-
-    public function delete(Company $company, BankAccount $bankAccount): bool
-    {
-        return $bankAccount->company_id === $company->id;
+        return 'bank_accounts';
     }
 }

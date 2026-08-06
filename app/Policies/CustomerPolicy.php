@@ -2,33 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Company;
-use App\Models\Customer;
-
-class CustomerPolicy
+/** Acesso ao módulo de clientes. */
+class CustomerPolicy extends ModulePolicy
 {
-    public function viewAny(Company $company): bool
+    protected function module(): string
     {
-        return true;
-    }
-
-    public function view(Company $company, Customer $customer): bool
-    {
-        return $customer->company_id === $company->id;
-    }
-
-    public function create(Company $company): bool
-    {
-        return true;
-    }
-
-    public function update(Company $company, Customer $customer): bool
-    {
-        return $customer->company_id === $company->id;
-    }
-
-    public function delete(Company $company, Customer $customer): bool
-    {
-        return $customer->company_id === $company->id;
+        return 'customers';
     }
 }

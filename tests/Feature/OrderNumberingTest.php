@@ -27,7 +27,7 @@ class OrderNumberingTest extends TestCase
             'controls_stock' => false, 'min_quantity' => 0, 'current_stock' => 0, 'active' => true,
         ]);
 
-        $this->actingAs($company);
+        $this->actingAsCompany($company);
 
         $create = fn () => $this->post(route('orders.store'), [
             'customer_id' => $customer->id,
