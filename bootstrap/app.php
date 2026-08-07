@@ -39,18 +39,29 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Sem isso, um 403/404 numa navegação do Inertia devolve a página de
-        // erro crua do Laravel dentro do modal, em vez de uma tela do sistema.
+        // Sem isso, um 403/404 devolve a página de erro crua do Laravel — sem
+        // menu e sem caminho de volta. Vale tanto para navegação do Inertia
+        // quanto para quem digitou a URL direto (aí não vem o X-Inertia).
         $exceptions->respond(function ($response, Throwable $e, Request $request) {
-            if (! $request->header('X-Inertia')) {
-                return $response;
-            }
-
             if (! in_array($response->getStatusCode(), [403, 404, 419, 500, 503], true)) {
                 return $response;
             }
 
-            return Inertia::render('Error', ['status' => $response->getStatusCode()])
+            $isInertia = (bool) $request->header('X-Inertia');
+
+            // Webhooks e chamadas JSON continuam recebendo a resposta padrão.
+            if (! $isInertia && (! $request->acceptsHtml() || $request->expectsJson())) {
+                return $response;
+            }
+
+            $user = $request->user();
+
+            return Inertia::render('Error', [
+                'status' => $response->getStatusCode(),
+                // Link de volta que o usuário consegue abrir de fato — mandar
+                // para o dashboard daria outro 403 em quem não tem o módulo.
+                'home'   => $user?->homeRoute() ?? route('login'),
+            ])
                 ->toResponse($request)
                 ->setStatusCode($response->getStatusCode());
         });

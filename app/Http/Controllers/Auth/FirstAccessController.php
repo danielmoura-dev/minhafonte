@@ -55,6 +55,8 @@ class FirstAccessController extends Controller
             'remember_token'          => Str::random(60),
         ])->save();
 
+        $intended = $request->session()->pull('url.intended');
+
         Auth::login($user, true);
         $request->session()->regenerate();
 
@@ -65,6 +67,6 @@ class FirstAccessController extends Controller
             actor:       $user,
         );
 
-        return redirect()->intended($user->homeRoute());
+        return redirect()->to($user->landingUrl($intended));
     }
 }

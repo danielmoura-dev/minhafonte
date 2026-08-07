@@ -52,6 +52,10 @@ class AuthenticatedCompanyController extends Controller
             ]);
         }
 
+        // A página que a pessoa tentou abrir antes de logar precisa ser lida
+        // ANTES de regenerar a sessão.
+        $intended = $request->session()->pull('url.intended');
+
         $request->session()->regenerate();
 
         $user = Auth::user();
@@ -63,9 +67,10 @@ class AuthenticatedCompanyController extends Controller
             actor:       $user,
         );
 
-        // Não manda para o dashboard fixo: quem não tem esse módulo cairia
-        // num 403 logo depois de entrar.
-        return redirect()->intended($user->homeRoute());
+        // Só volta para a página pretendida se ela for acessível — senão a
+        // pessoa entraria direto num 403. Sem pretendida, vai para a primeira
+        // tela que ela pode abrir.
+        return redirect()->to($user->landingUrl($intended));
     }
 
     public function destroy(Request $request): RedirectResponse

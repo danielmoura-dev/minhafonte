@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Notifiable;
 
 /**
@@ -117,6 +118,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $candidates = [
             'dashboard'        => 'dashboard',
+            'ceo'              => 'ceo.index',
             'orders'           => 'orders.index',
             'receivables'      => 'receivables.index',
             'customers'        => 'customers.index',
@@ -137,6 +139,53 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return route('sem-acesso');
+    }
+
+    /**
+     * O usuário consegue abrir esta URL?
+     *
+     * Usado depois do login: o Laravel guarda a página que a pessoa tentou
+     * abrir antes de entrar, e mandá-la de volta para lá sem conferir daria
+     * um 403 logo na entrada.
+     */
+    public function canAccessUrl(?string $url): bool
+    {
+        if (! $url) {
+            return false;
+        }
+
+        try {
+            $route = app('router')->getRoutes()->match(Request::create($url));
+        } catch (\Throwable) {
+            return false;   // rota inexistente ou verbo não permitido
+        }
+
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (! is_string($middleware) || ! str_starts_with($middleware, 'module:')) {
+                continue;
+            }
+
+            [$module, $action] = array_pad(
+                explode(',', substr($middleware, strlen('module:'))),
+                2,
+                Permissions::VIEW,
+            );
+
+            if (! $this->hasPermission(trim($module), trim($action))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Para onde mandar a pessoa depois de entrar: a página que ela tentou
+     * abrir, se puder; senão, a primeira que ela tem acesso.
+     */
+    public function landingUrl(?string $intended = null): string
+    {
+        return $this->canAccessUrl($intended) ? $intended : $this->homeRoute();
     }
 
     /**

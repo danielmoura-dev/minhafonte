@@ -150,6 +150,55 @@ class LoginTest extends TestCase
         fwrite(STDERR, "login: quem não tem dashboard cai no 1º módulo liberado\n");
     }
 
+    /**
+     * O Laravel guarda a página que a pessoa tentou abrir antes de logar.
+     * Se ela não tem acesso a essa página, voltar para lá jogaria o usuário
+     * direto num 403 assim que entrasse.
+     */
+    public function test_nao_volta_para_a_pagina_pretendida_se_for_proibida(): void
+    {
+        $company = Company::create([
+            'company_name' => 'Z', 'fantasy_name' => 'Z', 'cnpj' => '9',
+            'email' => 'z@teste.com', 'password' => Hash::make('Senha@12345'),
+        ]);
+
+        User::create([
+            'company_id'  => $company->id,
+            'name'        => 'VENDEDOR',
+            'email'       => 'vend@teste.com',
+            'password'    => 'Senha@12345',
+            'permissions' => ['orders' => ['view']],
+            'is_active'   => true,
+        ]);
+
+        // Tenta abrir o dashboard deslogado: o Laravel guarda essa URL...
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
+
+        // ...e depois de logar ele NÃO pode ser mandado de volta para lá.
+        $this->post(route('login.store'), [
+            'email'    => 'vend@teste.com',
+            'password' => 'Senha@12345',
+        ])->assertRedirect(route('orders.index'));
+
+        fwrite(STDERR, "login: página pretendida proibida é descartada (vai para /pedidos)\n");
+    }
+
+    public function test_volta_para_a_pagina_pretendida_quando_permitida(): void
+    {
+        [, $user] = $this->companyWithOwner();
+
+        $this->get(route('products.index'))->assertRedirect(route('login'));
+
+        $this->post(route('login.store'), [
+            'email'    => 'dono@teste.com',
+            'password' => 'Senha@12345',
+        ])->assertRedirect(route('products.index'));
+
+        $this->assertAuthenticatedAs($user);
+
+        fwrite(STDERR, "login: página pretendida permitida é respeitada\n");
+    }
+
     public function test_logout_encerra_a_sessao(): void
     {
         [$company] = $this->companyWithOwner();
