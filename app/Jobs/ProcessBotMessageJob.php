@@ -77,8 +77,11 @@ class ProcessBotMessageJob implements ShouldQueue
             ?? $bot->company?->company_name
             ?? 'sua empresa';
 
+        $attachments = [];
+
         try {
-            $answer = $gemini->reply($bot->company_id, $phone, $text, $audio, $companyName);
+            $answer      = $gemini->reply($bot->company_id, $phone, $text, $audio, $companyName);
+            $attachments = $gemini->attachments();
         } catch (\Throwable $e) {
             Log::error('Bot: falha ao gerar resposta', [
                 'instance' => $this->instanceName,
@@ -89,6 +92,26 @@ class ProcessBotMessageJob implements ShouldQueue
         }
 
         $evolution->sendText($this->instanceName, $phone, $answer);
+
+        // Arquivos pedidos na conversa (comprovantes) vão depois do texto.
+        // Falhar aqui não pode apagar a resposta que já foi enviada.
+        foreach ($attachments as $file) {
+            try {
+                $evolution->sendMedia($this->instanceName, $phone, $file['path'], $file['caption'] ?? '');
+            } catch (\Throwable $e) {
+                Log::error('Bot: falha ao enviar anexo', [
+                    'instance' => $this->instanceName,
+                    'file'     => $file['path'] ?? null,
+                    'error'    => $e->getMessage(),
+                ]);
+
+                $evolution->sendText(
+                    $this->instanceName,
+                    $phone,
+                    'Não consegui enviar o comprovante agora. 😕 Ele está anexado na venda, dentro do sistema.'
+                );
+            }
+        }
     }
 
     /**

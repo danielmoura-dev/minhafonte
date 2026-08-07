@@ -113,6 +113,40 @@ class EvolutionApiService
     }
 
     /**
+     * Envia um arquivo local como imagem ou documento.
+     *
+     * @param  string  $filePath  caminho absoluto no servidor
+     * @param  string  $caption   legenda (ignorada pelo WhatsApp em documentos)
+     */
+    public function sendMedia(string $instanceName, string $number, string $filePath, string $caption = ''): void
+    {
+        $fileName  = basename($filePath);
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        // PDF vai como documento (com nome de arquivo); imagem vai como foto.
+        $isDocument = $extension === 'pdf';
+
+        $this->client()->post("/message/sendMedia/{$instanceName}", array_filter([
+            'number'    => $number,
+            'mediatype' => $isDocument ? 'document' : 'image',
+            'mimetype'  => $this->mimeFor($extension),
+            'media'     => base64_encode(file_get_contents($filePath)),
+            'caption'   => $caption !== '' ? $caption : null,
+            'fileName'  => $isDocument ? $fileName : null,
+        ], fn ($v) => $v !== null))->throw();
+    }
+
+    private function mimeFor(string $extension): string
+    {
+        return match ($extension) {
+            'pdf'  => 'application/pdf',
+            'png'  => 'image/png',
+            'webp' => 'image/webp',
+            default => 'image/jpeg',
+        };
+    }
+
+    /**
      * Mostra o indicador de presença no chat ("gravando áudio...",
      * "digitando...") por `delaySeconds` antes da próxima mensagem.
      *

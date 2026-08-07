@@ -28,6 +28,37 @@ class EvolutionApiServicePresenceTest extends TestCase
         });
     }
 
+    public function test_imagem_vai_como_foto_e_pdf_como_documento(): void
+    {
+        config(['services.evolution.url' => 'https://evolution.test']);
+
+        $dir = sys_get_temp_dir() . '/fontepro-midia';
+        @mkdir($dir, 0777, true);
+        file_put_contents("{$dir}/comprovante.jpg", 'conteudo-imagem');
+        file_put_contents("{$dir}/comprovante.pdf", 'conteudo-pdf');
+
+        Http::fake(['*' => Http::response(['ok' => true], 200)]);
+
+        $service = new EvolutionApiService();
+
+        $service->sendMedia('fontepro_1', '5585999990001', "{$dir}/comprovante.jpg", 'Comprovante');
+        Http::assertSent(fn ($request) => $request['mediatype'] === 'image'
+            && $request['mimetype'] === 'image/jpeg'
+            && $request['caption'] === 'Comprovante'
+            // Foto não leva nome de arquivo; documento sim.
+            && ! isset($request['fileName']));
+
+        $service->sendMedia('fontepro_1', '5585999990001', "{$dir}/comprovante.pdf");
+        Http::assertSent(fn ($request) => $request['mediatype'] === 'document'
+            && $request['mimetype'] === 'application/pdf'
+            && $request['fileName'] === 'comprovante.pdf');
+
+        @unlink("{$dir}/comprovante.jpg");
+        @unlink("{$dir}/comprovante.pdf");
+
+        fwrite(STDERR, "midia: JPG vai como foto; PDF vai como documento nomeado\n");
+    }
+
     public function test_zero_delay_is_sent_as_zero(): void
     {
         config(['services.evolution.url' => 'https://evolution.test']);

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\RawMaterial;
 use App\Models\Sale;
 use App\Models\Seller;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Funções whitelisted que o bot de IA pode executar.
@@ -19,8 +20,26 @@ use App\Models\Seller;
  */
 class BotToolsService
 {
+    /**
+     * Arquivos que a conversa pediu para enviar (comprovantes).
+     *
+     * A IA só produz texto, então o envio do arquivo em si acontece depois,
+     * no job — aqui só ficam registrados quais mandar.
+     *
+     * @var list<array{path: string, caption: string}>
+     */
+    private array $attachments = [];
+
     public function __construct(private int $companyId)
     {
+    }
+
+    /**
+     * @return list<array{path: string, caption: string}>
+     */
+    public function attachments(): array
+    {
+        return $this->attachments;
     }
 
     /**
@@ -136,6 +155,17 @@ class BotToolsService
                     'properties' => (object) [],
                 ],
             ],
+            [
+                'name'        => 'order_receipts',
+                'description' => 'Comprovantes de pagamento de uma VENDA, pelo número dela. Além de informar quantos existem, JÁ ENVIA os arquivos no WhatsApp automaticamente — então avise que o comprovante está sendo enviado e não peça confirmação. Se não souber o número da venda, use sales_summary ou customer_summary antes.',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'order_number' => ['type' => 'integer', 'description' => 'Número da venda (ex.: 42)'],
+                    ],
+                    'required' => ['order_number'],
+                ],
+            ],
         ];
     }
 
@@ -164,8 +194,93 @@ class BotToolsService
             'product_stock'        => $this->productStock(isset($args['product_id']) ? (int) $args['product_id'] : null),
             'raw_material_stock'   => $this->rawMaterialStock(),
             'low_stock_items'      => $this->lowStockItems(),
+            'order_receipts'       => $this->orderReceipts((int) ($args['order_number'] ?? 0)),
             default                => ['error' => 'Função desconhecida.'],
         };
+    }
+
+    /**
+     * Comprovantes anexados aos pagamentos de uma venda.
+     *
+     * Além de descrever o que existe, enfileira os arquivos para envio — a IA
+     * só devolve texto, então quem manda a imagem é o job, depois da resposta.
+     */
+    private function orderReceipts(int $orderNumber): array
+    {
+        if ($orderNumber <= 0) {
+            return ['error' => 'Informe o número da venda.'];
+        }
+
+        $order = Order::fromCompany($this->companyId)
+            ->with(['customer:id,name', 'payments'])
+            ->where('order_number', $orderNumber)
+            ->first();
+
+        if (! $order) {
+            return ['found' => false, 'message' => "Venda #{$orderNumber} não encontrada."];
+        }
+
+        $withReceipt = $order->payments->filter(fn ($p) => filled($p->receipt_path));
+
+        if ($withReceipt->isEmpty()) {
+            return [
+                'found'         => true,
+                'order_number'  => $order->order_number,
+                'customer'      => $order->customer?->name,
+                'payments'      => $order->payments->count(),
+                'receipts'      => 0,
+                'message'       => $order->payments->isEmpty()
+                    ? 'Esta venda ainda não tem pagamento registrado.'
+                    : 'Os pagamentos desta venda não têm comprovante anexado.',
+            ];
+        }
+
+        $enviados = [];
+
+        foreach ($withReceipt as $payment) {
+            $absolute = Storage::disk('public')->path($payment->receipt_path);
+
+            // Registro no banco não garante o arquivo em disco.
+            if (! is_file($absolute)) {
+                continue;
+            }
+
+            $valor = 'R$ ' . number_format((float) $payment->amount, 2, ',', '.');
+            $data  = $payment->paid_at?->format('d/m/Y') ?? '';
+
+            $this->attachments[] = [
+                'path'    => $absolute,
+                'caption' => "Comprovante — Venda #{$order->order_number} · {$valor} · {$data}",
+            ];
+
+            $enviados[] = [
+                'amount'  => round((float) $payment->amount, 2),
+                'paid_at' => $payment->paid_at?->toDateTimeString(),
+                'method'  => $payment->method,
+                'is_pdf'  => $payment->receipt_is_pdf,
+            ];
+        }
+
+        if ($enviados === []) {
+            return [
+                'found'        => true,
+                'order_number' => $order->order_number,
+                'receipts'     => 0,
+                'message'      => 'O comprovante está registrado, mas o arquivo não foi encontrado no servidor.',
+            ];
+        }
+
+        return [
+            'found'        => true,
+            'order_number' => $order->order_number,
+            'customer'     => $order->customer?->name,
+            'total'        => round((float) $order->total, 2),
+            'receipts'     => count($enviados),
+            'sent'         => $enviados,
+            'message'      => count($enviados) === 1
+                ? 'Comprovante sendo enviado agora nesta conversa.'
+                : count($enviados) . ' comprovantes sendo enviados agora nesta conversa.',
+        ];
     }
 
     /**
