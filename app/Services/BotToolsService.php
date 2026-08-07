@@ -156,6 +156,17 @@ class BotToolsService
                 ],
             ],
             [
+                'name'        => 'orders_with_receipts',
+                'description' => 'Lista as vendas que TÊM comprovante anexado, da mais recente para a mais antiga. Use para responder "quais vendas têm comprovante" ou "qual a anterior/próxima que tem comprovante" — não fique testando uma venda por vez.',
+                'parameters'  => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'before_order_number' => ['type' => 'integer', 'description' => 'Opcional: só vendas com número MENOR que este (para "a anterior à #48")'],
+                        'limit'               => ['type' => 'integer', 'description' => 'Opcional: quantas listar (padrão 10)'],
+                    ],
+                ],
+            ],
+            [
                 'name'        => 'order_receipts',
                 'description' => 'Comprovantes de pagamento de uma VENDA, pelo número dela. Além de informar quantos existem, JÁ ENVIA os arquivos no WhatsApp automaticamente — então avise que o comprovante está sendo enviado e não peça confirmação. Se não souber o número da venda, use sales_summary ou customer_summary antes.',
                 'parameters'  => [
@@ -195,8 +206,51 @@ class BotToolsService
             'raw_material_stock'   => $this->rawMaterialStock(),
             'low_stock_items'      => $this->lowStockItems(),
             'order_receipts'       => $this->orderReceipts((int) ($args['order_number'] ?? 0)),
+            'orders_with_receipts' => $this->ordersWithReceipts(
+                isset($args['before_order_number']) ? (int) $args['before_order_number'] : null,
+                (int) ($args['limit'] ?? 10),
+            ),
             default                => ['error' => 'Função desconhecida.'],
         };
+    }
+
+    /**
+     * Vendas que têm comprovante anexado, da mais recente para a mais antiga.
+     *
+     * Existe para responder "qual a anterior que tem comprovante" sem que a
+     * IA precise tentar venda por venda até acertar.
+     */
+    private function ordersWithReceipts(?int $beforeOrderNumber, int $limit): array
+    {
+        $limit = max(1, min($limit ?: 10, 30));
+
+        $orders = Order::fromCompany($this->companyId)
+            ->with(['customer:id,name'])
+            ->whereHas('payments', fn ($q) => $q->whereNotNull('receipt_path'))
+            ->when($beforeOrderNumber, fn ($q, $n) => $q->where('order_number', '<', $n))
+            ->withCount(['payments as receipts_count' => fn ($q) => $q->whereNotNull('receipt_path')])
+            ->orderByDesc('order_number')
+            ->limit($limit)
+            ->get();
+
+        return [
+            'before_order_number' => $beforeOrderNumber,
+            'count'               => $orders->count(),
+            'orders'              => $orders->map(fn (Order $o) => [
+                'order_number' => $o->order_number,
+                'customer'     => $o->customer?->name ?? 'sem cliente',
+                'total'        => round((float) $o->total, 2),
+                'issue_date'   => $o->issue_date instanceof \DateTimeInterface
+                    ? $o->issue_date->format('Y-m-d')
+                    : (string) $o->issue_date,
+                'receipts'     => (int) $o->receipts_count,
+            ])->all(),
+            'message' => $orders->isEmpty()
+                ? ($beforeOrderNumber
+                    ? "Nenhuma venda anterior à #{$beforeOrderNumber} tem comprovante anexado."
+                    : 'Nenhuma venda tem comprovante anexado.')
+                : null,
+        ];
     }
 
     /**

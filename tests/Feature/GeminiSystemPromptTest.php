@@ -64,6 +64,25 @@ class GeminiSystemPromptTest extends TestCase
         fwrite(STDERR, "\nbot: prompt permite responder cumprimento, agradecimento e elogio\n");
     }
 
+    /**
+     * O bot chegou a anunciar "Achei! Mandando o comprovante da venda #47" de
+     * uma venda que não tinha nenhum — a regra pedia a confirmação de forma
+     * incondicional e ele repetiu a frase.
+     */
+    public function test_prompt_so_anuncia_envio_com_comprovante_de_verdade(): void
+    {
+        $prompt = $this->systemInstruction();
+
+        $this->assertStringContainsString('NUNCA diga que está enviando antes de chamar a função', $prompt);
+        $this->assertStringContainsString('MAIOR QUE ZERO', $prompt);
+        $this->assertStringContainsString('NÃO prometa nada', $prompt);
+
+        // E o caminho para responder "qual venda tem comprovante".
+        $this->assertStringContainsString('orders_with_receipts', $prompt);
+
+        fwrite(STDERR, "bot: prompt só deixa anunciar envio quando há comprovante\n");
+    }
+
     public function test_prompt_mantem_a_trava_contra_inventar_numeros(): void
     {
         $prompt = $this->systemInstruction();

@@ -187,6 +187,75 @@ class OrderReceiptToolTest extends TestCase
         fwrite(STDERR, "comprovante: venda excluída não devolve comprovante\n");
     }
 
+    /**
+     * O caso real: perguntaram qual a venda ANTERIOR à #48 que tem
+     * comprovante. Sem esta função a IA chutava a #47 (que não tinha) e
+     * anunciava um envio que nunca acontecia.
+     */
+    public function test_lista_a_venda_anterior_que_tem_comprovante(): void
+    {
+        $this->pay($this->order(48), 250);          // tem
+        $this->order(47);                            // sem pagamento
+        $this->pay($this->order(46), 100, null);     // pago, mas sem anexo
+        $this->pay($this->order(45), 300);           // tem
+
+        $result = (new BotToolsService($this->company->id))
+            ->execute('orders_with_receipts', ['before_order_number' => 48]);
+
+        // Pula a 47 e a 46 sozinha, e devolve a 45 em primeiro.
+        $this->assertSame(1, $result['count']);
+        $this->assertSame(45, $result['orders'][0]['order_number']);
+        $this->assertSame(1, $result['orders'][0]['receipts']);
+
+        fwrite(STDERR, "\ncomprovante: 'anterior à #48 com comprovante' -> #45 (pula 47 e 46)\n");
+    }
+
+    public function test_lista_as_vendas_com_comprovante_da_mais_recente(): void
+    {
+        $this->pay($this->order(10), 100);
+        $this->pay($this->order(30), 200);
+        $this->order(20);   // sem pagamento, fica de fora
+
+        $result = (new BotToolsService($this->company->id))
+            ->execute('orders_with_receipts', []);
+
+        $this->assertSame(2, $result['count']);
+        $this->assertSame([30, 10], array_column($result['orders'], 'order_number'));
+
+        fwrite(STDERR, "comprovante: lista da mais recente para a mais antiga\n");
+    }
+
+    public function test_avisa_quando_nenhuma_anterior_tem_comprovante(): void
+    {
+        $this->pay($this->order(48), 250);
+        $this->order(47);   // sem pagamento
+
+        $result = (new BotToolsService($this->company->id))
+            ->execute('orders_with_receipts', ['before_order_number' => 48]);
+
+        $this->assertSame(0, $result['count']);
+        $this->assertStringContainsString('Nenhuma venda anterior à #48', $result['message']);
+
+        fwrite(STDERR, "comprovante: sem anterior com anexo, avisa em vez de sugerir uma qualquer\n");
+    }
+
+    public function test_nao_lista_venda_de_outra_empresa(): void
+    {
+        $outra = Company::create([
+            'company_name' => 'Outra', 'fantasy_name' => 'Outra', 'cnpj' => '2',
+            'email' => 'outra@teste.com', 'password' => bcrypt('x'),
+        ]);
+
+        $this->pay($this->order(5, owner: $outra), 999);
+
+        $result = (new BotToolsService($this->company->id))
+            ->execute('orders_with_receipts', []);
+
+        $this->assertSame(0, $result['count']);
+
+        fwrite(STDERR, "comprovante: listagem não mistura empresas\n");
+    }
+
     public function test_arquivo_sumido_do_disco_nao_quebra(): void
     {
         $order = $this->order(20);
