@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, History, ArrowDownCircle, ArrowUpCircle, Filter } from 'lucide-react';
+import { ArrowLeft, History, ArrowDownCircle, ArrowUpCircle, Filter, FileText, Image as ImageIcon } from 'lucide-react';
 import Pagination from '@/Components/UI/Pagination';
 import { formatQuantity, reasonLabel, REASON_LABELS } from '@/utils/productMovements';
 
@@ -121,6 +121,7 @@ export default function MovementHistory({ movements, products, suppliers, filter
                                 <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Tipo</th>
                                 <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Motivo</th>
                                 <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Fornecedor</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">NF</th>
                                 <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Qtd.</th>
                                 <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Antes</th>
                                 <th className="text-right px-4 py-3 font-semibold text-gray-500 text-xs uppercase tracking-wider">Depois</th>
@@ -142,6 +143,21 @@ export default function MovementHistory({ movements, products, suppliers, filter
                                     </td>
                                     <td className="px-4 py-3 text-gray-600">{reasonLabel(mv.reason)}</td>
                                     <td className="px-4 py-3 text-gray-500">{mv.supplier?.name ?? <span className="text-gray-300">—</span>}</td>
+                                    <td className="px-4 py-3">
+                                        {mv.invoice_url ? (
+                                            <a
+                                                href={mv.invoice_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition"
+                                            >
+                                                {mv.invoice_is_pdf ? <FileText size={13} strokeWidth={2} /> : <ImageIcon size={13} strokeWidth={2} />}
+                                                Ver
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-300">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-right font-medium text-gray-800">
                                         {mv.type === 'entrada' ? '+' : '−'}{formatQuantity(mv.quantity)} un
                                     </td>

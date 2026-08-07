@@ -3,18 +3,11 @@ import { Link, useForm } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, FlaskConical, X, AlertTriangle } from 'lucide-react';
 import { unitLabel, unitAbbr, formatQuantity, MOVEMENT_REASONS, reasonLabel } from '@/utils/rawMaterialUnits';
-import { formatQuantityInput, parseQuantityToDB } from '@/utils/numberInput';
+import { formatQuantityInput, parseQuantityToDB, formatPriceInput, parsePriceToDB } from '@/utils/numberInput';
+import FileDropzone from '@/Components/UI/FileDropzone';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
-}
-function formatPriceInput(value) {
-    const digits = value.replace(/\D/g, '');
-    if (!digits) return '';
-    return (parseInt(digits, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function parsePriceToDB(formatted) {
-    return formatted.replace(/\./g, '').replace(',', '.');
 }
 
 const fieldClass = "w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition";
@@ -36,6 +29,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
         quantity:        '',
         supplier_id:     '',
         unit_price:      '',
+        invoice:         null,
         notes:           '',
     });
 
@@ -70,7 +64,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
     const insufficient = data.type === 'saida' && qtyNum > 0 && stockAfter < 0;
 
     function changeType(type) {
-        setData(d => ({ ...d, type, reason: '', supplier_id: '', unit_price: '' }));
+        setData(d => ({ ...d, type, reason: '', supplier_id: '', unit_price: '', invoice: null }));
         setPriceDisplay('');
     }
 
@@ -95,6 +89,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
 
     function submit() {
         post(route('raw-materials.movements.store'), {
+            forceFormData: true,
             onError: () => setShowSummary(false),
         });
     }
@@ -187,7 +182,13 @@ export default function Movement({ materials, suppliers, preselectedId }) {
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Motivo <span className="text-red-500">*</span></label>
                                 <select
                                     value={data.reason}
-                                    onChange={e => setData(d => ({ ...d, reason: e.target.value, supplier_id: '', unit_price: e.target.value === 'compra' ? d.unit_price : '' }))}
+                                    onChange={e => setData(d => ({
+                                        ...d,
+                                        reason:      e.target.value,
+                                        supplier_id: '',
+                                        unit_price:  e.target.value === 'compra' ? d.unit_price : '',
+                                        invoice:     e.target.value === 'compra' ? d.invoice : null,
+                                    }))}
                                     className={fieldClass + ' bg-white'}
                                 >
                                     <option value="">Selecione o motivo...</option>
@@ -251,6 +252,21 @@ export default function Movement({ materials, suppliers, preselectedId }) {
                                 </div>
                             )}
 
+                            {/* Nota fiscal (só compra) */}
+                            {isCompra && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Nota fiscal <span className="text-gray-400 font-normal">(opcional)</span>
+                                    </label>
+                                    <FileDropzone
+                                        file={data.invoice}
+                                        onChange={f => setData('invoice', f)}
+                                        error={errors.invoice}
+                                        hint="Foto ou PDF da nota fiscal da compra"
+                                    />
+                                </div>
+                            )}
+
                             {/* Observação */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Observação</label>
@@ -304,6 +320,7 @@ export default function Movement({ materials, suppliers, preselectedId }) {
                                 <>
                                     <SummaryRow label="Valor unitário" value={formatCurrency(priceNum)} />
                                     <SummaryRow label="Valor total" value={formatCurrency(total)} strong />
+                                    {data.invoice && <SummaryRow label="Nota fiscal" value={data.invoice.name} />}
                                 </>
                             )}
                             <SummaryRow label="Estoque atual" value={`${formatQuantity(stock)} ${unitAbbr(material.unit)}`} />

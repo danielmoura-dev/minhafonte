@@ -60,6 +60,7 @@ class RawMaterialMovementController extends Controller
             'quantity'        => ['required', 'numeric', 'gt:0'],
             'supplier_id'     => [Rule::requiredIf($isCompra), 'nullable', Rule::exists('suppliers', 'id')->where('company_id', Tenant::id())],
             'unit_price'      => [Rule::requiredIf($isCompra), 'nullable', 'numeric', 'min:0'],
+            'invoice'         => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
             'notes'           => ['nullable', 'string', 'max:1000'],
         ], [
             'raw_material_id.required' => 'Selecione a matéria-prima.',
@@ -69,6 +70,8 @@ class RawMaterialMovementController extends Controller
             'quantity.gt'              => 'A quantidade deve ser maior que zero.',
             'supplier_id.required'     => 'Selecione o fornecedor.',
             'unit_price.required'      => 'Informe o valor unitário pago.',
+            'invoice.mimes'            => 'Envie uma imagem (JPG, PNG, WEBP) ou PDF.',
+            'invoice.max'              => 'O arquivo deve ter no máximo 8 MB.',
         ]);
 
         $material = RawMaterial::fromCompany(Tenant::id())->findOrFail($data['raw_material_id']);
@@ -92,7 +95,13 @@ class RawMaterialMovementController extends Controller
         $unitPrice = $isCompra ? (float) $data['unit_price'] : null;
         $total     = $unitPrice !== null ? round($unitPrice * $qty, 2) : null;
 
-        DB::transaction(function () use ($material, $type, $reason, $qty, $before, $after, $isCompra, $data, $unitPrice, $total) {
+        // Nota fiscal só faz sentido numa compra — em qualquer outro motivo,
+        // o arquivo enviado (se algum) é ignorado.
+        $invoicePath = $isCompra && $request->hasFile('invoice')
+            ? $request->file('invoice')->store('invoices', 'public')
+            : null;
+
+        DB::transaction(function () use ($material, $type, $reason, $qty, $before, $after, $isCompra, $data, $unitPrice, $total, $invoicePath) {
             RawMaterialMovement::create([
                 'company_id'      => Tenant::id(),
                 'raw_material_id' => $material->id,
@@ -101,6 +110,7 @@ class RawMaterialMovementController extends Controller
                 'reason'          => $reason,
                 'quantity'        => $qty,
                 'unit_price'      => $unitPrice,
+                'invoice_path'    => $invoicePath,
                 'total_price'     => $total,
                 'stock_before'    => $before,
                 'stock_after'     => $after,

@@ -37,3 +37,30 @@ export function quantityToDisplay(value) {
     if (Number.isNaN(n)) return '';
     return n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 }
+
+// Formata um valor monetário digitado, permitindo até 3 casas decimais.
+// Diferente de uma máscara de centavos (que trava em 2 casas), aqui o que é
+// digitado é o que fica — necessário porque alguns itens têm valor unitário
+// fracionário de verdade (ex.: R$ 0,067 por unidade, num boleto de compra a granel).
+export function formatPriceInput(value) {
+    if (value === null || value === undefined) return '';
+
+    let v = String(value).replace(/\./g, '').replace(/[^\d,]/g, '');
+
+    const firstComma = v.indexOf(',');
+    let intPart = firstComma === -1 ? v : v.slice(0, firstComma);
+    let decPart = firstComma === -1 ? undefined : v.slice(firstComma + 1).replace(/,/g, '').slice(0, 3);
+
+    intPart = intPart.replace(/^0+(?=\d)/, '');
+    if (intPart === '') intPart = decPart !== undefined ? '0' : '';
+
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    return decPart !== undefined ? `${intPart},${decPart}` : intPart;
+}
+
+// Converte o texto exibido (pt-BR) para o valor numérico enviado ao banco.
+export function parsePriceToDB(display) {
+    if (display === null || display === undefined || display === '') return '';
+    return String(display).replace(/\./g, '').replace(',', '.');
+}
