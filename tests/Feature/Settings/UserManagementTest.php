@@ -38,7 +38,6 @@ class UserManagementTest extends TestCase
                 'permissions' => [
                     'orders'       => ['create', 'edit'],   // sem 'view' de propósito
                     'modulo_falso' => ['view'],
-                    'users'        => ['view'],             // não é concedível
                 ],
             ])->assertRedirect();
 
@@ -54,18 +53,60 @@ class UserManagementTest extends TestCase
         // sanitize(): implica 'view' e descarta o que não existe
         $this->assertSame(['view', 'create', 'edit'], $user->permissions['orders']);
         $this->assertArrayNotHasKey('modulo_falso', $user->permissions);
-        $this->assertArrayNotHasKey('users', $user->permissions);
 
         fwrite(STDERR, "\nusuarios: criado sem senha, permissões saneadas ('view' implícito)\n");
     }
 
-    public function test_funcionario_nao_acessa_a_tela_de_usuarios(): void
+    public function test_funcionario_sem_a_permissao_nao_acessa(): void
     {
         $this->actingAsCompany($this->company, ['orders' => ['view']]);
 
         $this->get(route('users.index'))->assertForbidden();
 
-        fwrite(STDERR, "usuarios: funcionário não abre a tela de usuários\n");
+        fwrite(STDERR, "usuarios: sem a permissão 'users', a tela não abre\n");
+    }
+
+    /**
+     * Quem gerencia usuários não pode repassar esse poder adiante — senão a
+     * permissão se espalha sozinha e o dono perde o controle.
+     */
+    public function test_quem_nao_e_dono_nao_concede_o_modulo_de_usuarios(): void
+    {
+        $this->actingAsCompany($this->company, ['users' => ['view', 'create', 'edit']]);
+
+        $this->post(route('users.store'), [
+            'name'        => 'CANDIDATO',
+            'email'       => 'candidato@teste.com',
+            'permissions' => ['users' => ['view', 'create'], 'orders' => ['view']],
+        ])->assertSessionHasNoErrors();
+
+        $criado = User::where('email', 'candidato@teste.com')->first();
+
+        $this->assertArrayNotHasKey('users', $criado->permissions);
+        $this->assertSame(['view'], $criado->permissions['orders']);
+
+        // Nem na tela o módulo é oferecido a quem não é dono.
+        $this->get(route('users.index'))
+            ->assertInertia(fn ($page) => $page->missing('modules.users'));
+
+        fwrite(STDERR, "usuarios: quem não é dono não consegue conceder 'users'\n");
+    }
+
+    public function test_dono_concede_o_modulo_de_usuarios_normalmente(): void
+    {
+        $this->actingAsCompany($this->company);
+
+        $this->post(route('users.store'), [
+            'name'        => 'GERENTE',
+            'email'       => 'gerente@teste.com',
+            'permissions' => ['users' => ['view', 'create']],
+        ])->assertSessionHasNoErrors();
+
+        $gerente = User::where('email', 'gerente@teste.com')->first();
+
+        $this->assertSame(['view', 'create'], $gerente->permissions['users']);
+
+        fwrite(STDERR, "usuarios: o dono concede 'users' sem restrição\n");
     }
 
     public function test_dono_nao_alcanca_usuario_de_outra_empresa(): void

@@ -250,17 +250,19 @@ Route::middleware(['auth', 'user.active'])->group(function () {
     Route::put('configuracoes/empresa', [CompanySettingsController::class, 'update'])
         ->middleware('module:company_settings,edit')->name('company.settings.update');
 
-    // Configurações — Usuários (exclusivo do dono)
-    Route::middleware('owner')->group(function () {
-        Route::get('configuracoes/usuarios', [UserController::class, 'index'])->name('users.index');
-        Route::post('configuracoes/usuarios', [UserController::class, 'store'])->name('users.store');
-        Route::put('configuracoes/usuarios/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('configuracoes/usuarios/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-        Route::patch('configuracoes/usuarios/{user}/status', [UserController::class, 'toggleStatus'])
-            ->name('users.toggle-status');
-        Route::post('configuracoes/usuarios/{user}/senha', [UserController::class, 'resetPassword'])
-            ->name('users.reset-password');
-    });
+    // Configurações — Usuários
+    Route::get('configuracoes/usuarios', [UserController::class, 'index'])
+        ->middleware('module:users,view')->name('users.index');
+    Route::post('configuracoes/usuarios', [UserController::class, 'store'])
+        ->middleware('module:users,create')->name('users.store');
+    Route::put('configuracoes/usuarios/{user}', [UserController::class, 'update'])
+        ->middleware('module:users,edit')->name('users.update');
+    Route::delete('configuracoes/usuarios/{user}', [UserController::class, 'destroy'])
+        ->middleware('module:users,delete')->name('users.destroy');
+    Route::patch('configuracoes/usuarios/{user}/status', [UserController::class, 'toggleStatus'])
+        ->middleware('module:users,edit')->name('users.toggle-status');
+    Route::post('configuracoes/usuarios/{user}/senha', [UserController::class, 'resetPassword'])
+        ->middleware('module:users,edit')->name('users.reset-password');
 
     // Configurações — Conectar Bot (WhatsApp)
     Route::get('configuracoes/bot', [\App\Http\Controllers\Settings\WhatsAppBotController::class, 'edit'])

@@ -45,7 +45,20 @@ final class Permissions
             'company_settings' => ['label' => 'Dados da Empresa',    'group' => 'Configurações', 'actions' => [self::VIEW, self::EDIT]],
             'bank_accounts'    => ['label' => 'Contas Bancárias',    'group' => 'Configurações', 'actions' => self::CRUD],
             'bot'              => ['label' => 'Conectar Bot',        'group' => 'Configurações', 'actions' => [self::VIEW, self::EDIT]],
+            'users'            => ['label' => 'Usuários',            'group' => 'Configurações', 'actions' => self::CRUD],
         ];
+    }
+
+    /**
+     * Módulos que só o dono pode conceder.
+     *
+     * Quem gerencia usuários não pode repassar esse poder adiante: senão a
+     * permissão se espalharia sozinha e o dono perderia o controle de quem
+     * dá acesso a quem.
+     */
+    public static function ownerOnlyToGrant(): array
+    {
+        return ['users'];
     }
 
     /**

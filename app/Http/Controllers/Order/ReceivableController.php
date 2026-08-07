@@ -21,8 +21,8 @@ class ReceivableController extends Controller
 {
     public function index(Request $request): Response
     {
-        $this->authorize('viewAny', Order::class);
-
+        // A permissão vem do módulo `receivables` na rota — Recebimentos é um
+        // módulo próprio, então não pode exigir acesso a Vendas.
         $status = $request->get('payment_status', 'open'); // open = pending + partial
         $today  = now()->toDateString();
 
@@ -75,7 +75,9 @@ class ReceivableController extends Controller
 
     public function show(Order $order): Response
     {
-        $this->authorize('view', $order);
+        // Só a checagem de empresa: o binding de {order} é global, então sem
+        // isto daria para abrir a venda de outra empresa pela URL.
+        abort_unless($order->company_id === Tenant::id(), 403);
 
         $order->load(['customer:id,name', 'payments.bankAccount:id,name,bank']);
 
@@ -92,7 +94,7 @@ class ReceivableController extends Controller
 
     public function storePayment(StorePaymentRequest $request, Order $order): RedirectResponse
     {
-        $this->authorize('update', $order);
+        abort_unless($order->company_id === Tenant::id(), 403);
 
         $data = $request->validated();
 

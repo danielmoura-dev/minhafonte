@@ -17,7 +17,10 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Usuários da empresa — só o dono acessa (middleware `owner` nas rotas).
+ * Usuários da empresa.
+ *
+ * O acesso é uma permissão como as outras ('users'), mas com duas travas: o
+ * dono da conta nunca pode ser alterado, e ninguém edita a si mesmo.
  *
  * O usuário nasce sem senha: quem define é ele mesmo, no primeiro acesso.
  */
@@ -47,10 +50,20 @@ class UserController extends Controller
                 'status'      => $this->status($user),
             ]);
 
+        $modules = Permissions::modules();
+
+        // Quem não é dono nem vê na tela o que não pode conceder — melhor do
+        // que deixar marcar e o servidor descartar em silêncio.
+        if (! Tenant::user()?->is_owner) {
+            foreach (Permissions::ownerOnlyToGrant() as $module) {
+                unset($modules[$module]);
+            }
+        }
+
         return Inertia::render('Settings/Users', [
-            'users'   => $users,
+            'users' => $users,
             // Catálogo vem do servidor para o front nunca duplicar a lista.
-            'modules' => Permissions::modules(),
+            'modules' => $modules,
         ]);
     }
 
@@ -65,7 +78,7 @@ class UserController extends Controller
             'name'        => $data['name'],
             'email'       => $data['email'],
             'password'    => null,                                            // definida no 1º acesso
-            'permissions' => Permissions::sanitize($data['permissions'] ?? []),
+            'permissions' => $this->grantable($data['permissions'] ?? []),
             'is_owner'    => false,
             'is_active'   => true,
             // Criado por quem já responde pela conta: não precisa confirmar e-mail.
@@ -85,7 +98,7 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        $this->authorize('manage', $user);
+        $this->authorize('update', $user);
 
         $data = $request->validated();
         $old  = ['name' => $user->name, 'email' => $user->email, 'permissions' => $user->permissions];
@@ -93,7 +106,7 @@ class UserController extends Controller
         $user->update([
             'name'        => $data['name'],
             'email'       => $data['email'],
-            'permissions' => Permissions::sanitize($data['permissions'] ?? []),
+            'permissions' => $this->grantable($data['permissions'] ?? [], $user),
         ]);
 
         AuditService::log(
@@ -109,7 +122,7 @@ class UserController extends Controller
 
     public function toggleStatus(User $user): RedirectResponse
     {
-        $this->authorize('manage', $user);
+        $this->authorize('update', $user);
 
         $user->update(['is_active' => ! $user->is_active]);
 
@@ -133,7 +146,7 @@ class UserController extends Controller
      */
     public function resetPassword(ResetUserPasswordRequest $request, User $user): RedirectResponse
     {
-        $this->authorize('manage', $user);
+        $this->authorize('update', $user);
 
         $manual = $request->input('mode') === 'manual';
 
@@ -164,7 +177,7 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
-        $this->authorize('manage', $user);
+        $this->authorize('delete', $user);
 
         $name = $user->name;
 
@@ -182,6 +195,37 @@ class UserController extends Controller
         );
 
         return back()->with('success', "{$name} foi removido.");
+    }
+
+    /**
+     * Permissões que podem ser gravadas de fato.
+     *
+     * Além de descartar módulo/ação inexistente, impede que quem não é dono
+     * conceda o próprio módulo de Usuários — senão a permissão se espalharia
+     * sozinha e o dono perderia o controle de quem dá acesso a quem.
+     *
+     * @param  User|null  $target  usuário sendo editado (preserva o que já tinha)
+     */
+    private function grantable(mixed $requested, ?User $target = null): array
+    {
+        $clean = Permissions::sanitize($requested);
+
+        if (Tenant::user()?->is_owner) {
+            return $clean;
+        }
+
+        foreach (Permissions::ownerOnlyToGrant() as $module) {
+            // Mantém o que o dono já havia concedido; só não deixa conceder agora.
+            $existing = ($target?->permissions ?? [])[$module] ?? null;
+
+            if ($existing) {
+                $clean[$module] = $existing;
+            } else {
+                unset($clean[$module]);
+            }
+        }
+
+        return $clean;
     }
 
     /**

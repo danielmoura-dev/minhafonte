@@ -161,7 +161,7 @@ const NAV_GROUPS = [
             { label: 'Dados da Empresa', route: 'company.settings.edit', module: 'company_settings', action: 'view', active: u => u.startsWith('/configuracoes/empresa') },
             { label: 'Contas Bancárias', route: 'bank-accounts.index',   module: 'bank_accounts',    action: 'view', active: u => u.startsWith('/configuracoes/contas') },
             { label: 'Conectar Bot',     route: 'bot.edit',              module: 'bot',              action: 'view', active: u => u.startsWith('/configuracoes/bot') },
-            { label: 'Usuários',         route: 'users.index',           ownerOnly: true,                            active: u => u.startsWith('/configuracoes/usuarios') },
+            { label: 'Usuários',         route: 'users.index',           module: 'users',            action: 'view', active: u => u.startsWith('/configuracoes/usuarios') },
         ],
     },
 ];

@@ -60,13 +60,17 @@ class PermissionsTest extends TestCase
         fwrite(STDERR, "permissoes: quem cria/edita também recebe 'view'\n");
     }
 
-    public function test_sanitize_nunca_concede_gerenciar_usuarios(): void
+    public function test_gerenciar_usuarios_e_um_modulo_reservado_ao_dono(): void
     {
-        // 'users' não está no catálogo justamente para não ser concedível.
-        $this->assertSame([], Permissions::sanitize(['users' => ['view', 'create']]));
-        $this->assertFalse(Permissions::exists('users'));
+        // 'users' é um módulo normal — o dono pode delegá-lo...
+        $this->assertTrue(Permissions::exists('users', 'create'));
+        $this->assertSame(['view', 'create'], Permissions::sanitize(['users' => ['view', 'create']])['users']);
 
-        fwrite(STDERR, "permissoes: 'users' não é concedível por payload\n");
+        // ...mas quem o recebe não pode repassá-lo adiante (aplicado no
+        // UserController; aqui garantimos que ele está na lista reservada).
+        $this->assertContains('users', Permissions::ownerOnlyToGrant());
+
+        fwrite(STDERR, "permissoes: 'users' é delegável pelo dono, mas não repassável\n");
     }
 
     public function test_has_permission_respeita_o_json(): void

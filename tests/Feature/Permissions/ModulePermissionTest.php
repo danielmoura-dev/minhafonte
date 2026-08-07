@@ -63,6 +63,39 @@ class ModulePermissionTest extends TestCase
         fwrite(STDERR, "permissao: quem vende não vê Recebimentos automaticamente\n");
     }
 
+    /**
+     * Recebimentos abria a sidebar mas dava 403: o controller autorizava
+     * contra a policy de Vendas, então exigia os dois módulos.
+     */
+    public function test_recebimentos_funciona_sem_permissao_de_vendas(): void
+    {
+        $customer = Customer::create([
+            'company_id' => $this->company->id, 'type' => 'pf', 'name' => 'CLIENTE', 'is_active' => true,
+        ]);
+        $order = Order::create([
+            'company_id' => $this->company->id, 'customer_id' => $customer->id, 'order_number' => 1,
+            'issue_date' => now()->toDateString(), 'items_count' => 1, 'total' => 100,
+            'stock_action' => 'none', 'payment_status' => 'pending', 'paid_total' => 0,
+        ]);
+
+        // SÓ recebimentos, sem nenhuma permissão de vendas
+        $this->actingAsCompany($this->company, ['receivables' => ['view', 'create']]);
+
+        $this->get(route('receivables.index'))->assertOk();
+        $this->get(route('receivables.show', $order))->assertOk();
+
+        $this->post(route('receivables.payments.store', $order), [
+            'amount' => 50, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
+        ])->assertRedirect();
+
+        $this->assertEquals(50, $order->fresh()->paid_total);
+
+        // E continua sem enxergar Vendas
+        $this->get(route('orders.index'))->assertForbidden();
+
+        fwrite(STDERR, "permissao: só Recebimentos já abre e registra pagamento (sem Vendas)\n");
+    }
+
     public function test_dono_acessa_tudo(): void
     {
         $this->actingAsCompany($this->company);
@@ -77,19 +110,24 @@ class ModulePermissionTest extends TestCase
         fwrite(STDERR, "permissao: dono continua acessando tudo (nada mudou para quem já usava)\n");
     }
 
-    public function test_gerenciar_usuarios_nao_e_concedivel(): void
+    public function test_gerenciar_usuarios_pode_ser_delegado(): void
     {
-        // Mesmo forjando o módulo no JSON, continua sendo 403: 'users' não é
-        // uma permissão, é exclusividade do dono.
         $this->actingAsCompany($this->company, [
-            'users'  => ['view', 'create', 'edit', 'delete'],
+            'users'  => ['view', 'create'],
             'orders' => ['view'],
         ]);
 
-        $this->get(route('users.index'))->assertForbidden();
-        $this->post(route('users.store'), ['name' => 'X', 'email' => 'x@x.com'])->assertForbidden();
+        $this->get(route('users.index'))->assertOk();
 
-        fwrite(STDERR, "permissao: 'users' forjado no JSON não dá acesso (só o dono)\n");
+        $this->post(route('users.store'), [
+            'name' => 'NOVO', 'email' => 'novo@teste.com',
+        ])->assertSessionHasNoErrors();
+
+        // Recebeu 'view' e 'create', mas não 'delete'
+        $this->delete(route('users.destroy', \App\Models\User::where('email', 'novo@teste.com')->first()))
+            ->assertForbidden();
+
+        fwrite(STDERR, "permissao: gerenciar usuários pode ser delegado, ação por ação\n");
     }
 
     public function test_usuario_desativado_e_derrubado_na_hora(): void
