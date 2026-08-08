@@ -158,14 +158,14 @@ class EditPaymentTest extends TestCase
         $this->assertSame('paid', $order->payment_status);
         $this->assertEquals(0, (float) $order->remaining);
 
-        // E a partir daí não pode mais alterar
+        // E a partir daí só corrige depois de liberar por senha
         $this->put(route('receivables.payments.update', $payment), [
             'amount' => 10, 'method' => 'cash', 'paid_at' => now()->format('Y-m-d H:i:s'),
         ])->assertRedirect();
 
         $this->assertEquals(200, (float) $payment->fresh()->amount);
 
-        fwrite(STDERR, "correcao: ao quitar, novas alterações ficam bloqueadas\n");
+        fwrite(STDERR, "correcao: ao quitar, alterações exigem senha de administrador\n");
     }
 
     public function test_invalid_amount_is_rejected(): void

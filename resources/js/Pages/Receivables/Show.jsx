@@ -1,7 +1,7 @@
 import AppLayout from '@/Layouts/AppLayout';
 import { Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Plus, Wallet, CheckCircle2, Paperclip, FileText, Image as ImageIcon, X, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Wallet, CheckCircle2, Paperclip, FileText, Image as ImageIcon, X, Pencil, Lock, Unlock } from 'lucide-react';
 import FileDropzone from '@/Components/UI/FileDropzone';
 
 function formatCurrency(value) {
@@ -132,6 +132,65 @@ function EditPaymentModal({ payment, bankAccounts, onClose }) {
     );
 }
 
+/**
+ * Pede a senha de administrador para liberar a correção dos pagamentos de
+ * uma venda já quitada (ex.: recebimento lançado na conta errada).
+ */
+function UnlockPaymentsModal({ order, onClose }) {
+    const { data, setData, post, processing, errors, reset } = useForm({ admin_password: '' });
+
+    function submit(e) {
+        e.preventDefault();
+        post(route('receivables.unlock-edit', order.id), {
+            preserveScroll: true,
+            onSuccess: () => { reset(); onClose(); },
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+            <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+                <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                        <Lock size={20} className="text-amber-500" strokeWidth={1.75} />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900">Corrigir venda quitada</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            A Venda #{order.order_number} está quitada. Informe a senha de administrador
+                            para corrigir os pagamentos — valor, forma, conta de destino ou data.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-5">
+                    <input
+                        type="password"
+                        value={data.admin_password}
+                        onChange={e => setData('admin_password', e.target.value)}
+                        placeholder="Senha de administrador"
+                        autoFocus
+                        autoComplete="off"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
+                    />
+                    {errors.admin_password && <p className="text-red-500 text-xs mt-1.5">{errors.admin_password}</p>}
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                    <button type="button" onClick={() => { reset(); onClose(); }} disabled={processing}
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-60">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={processing}
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition disabled:opacity-60">
+                        {processing ? 'Verificando...' : 'Desbloquear'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
 /** Modal para anexar/trocar o comprovante de um pagamento já registrado. */
 function ReceiptModal({ payment, onClose }) {
     const { data, setData, post, processing, errors } = useForm({ receipt: null });
@@ -219,10 +278,11 @@ function ReceiptCell({ payment, onAttach }) {
     );
 }
 
-export default function ReceivableShow({ order, bankAccounts }) {
+export default function ReceivableShow({ order, bankAccounts, canEditPayments }) {
     const now = new Date();
     const [receiptFor, setReceiptFor] = useState(null);
     const [editingPayment, setEditingPayment] = useState(null);
+    const [unlocking, setUnlocking] = useState(false);
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         amount:          '',
         method:          'cash',
@@ -277,13 +337,35 @@ export default function ReceivableShow({ order, bankAccounts }) {
                     </div>
 
                     {isPaid && (
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex items-center gap-3">
-                            <CheckCircle2 size={22} className="text-green-600" strokeWidth={1.75} />
-                            <div>
-                                <p className="text-sm font-semibold text-green-800">Venda quitada</p>
-                                <p className="text-xs text-green-600">Todos os pagamentos foram recebidos.</p>
+                        canEditPayments ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-center gap-3">
+                                <Unlock size={22} className="text-amber-600" strokeWidth={1.75} />
+                                <div>
+                                    <p className="text-sm font-semibold text-amber-800">Correção liberada</p>
+                                    <p className="text-xs text-amber-700">
+                                        Clique no valor de um pagamento para ajustar. O saldo e a
+                                        situação da venda são recalculados.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 size={22} className="text-green-600" strokeWidth={1.75} />
+                                    <div>
+                                        <p className="text-sm font-semibold text-green-800">Venda quitada</p>
+                                        <p className="text-xs text-green-600">Todos os pagamentos foram recebidos.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setUnlocking(true)}
+                                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-green-700 hover:text-green-900 transition"
+                                >
+                                    <Lock size={12} strokeWidth={2} />
+                                    Corrigir um pagamento
+                                </button>
+                            </div>
+                        )
                     )}
                 </div>
 
@@ -389,11 +471,7 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                                 <ReceiptCell payment={p} onAttach={setReceiptFor} />
                                             </td>
                                             <td className="px-5 py-3 text-right">
-                                                {isPaid ? (
-                                                    <span className="font-semibold text-green-600" title="Venda quitada — não é possível alterar">
-                                                        {formatCurrency(p.amount)}
-                                                    </span>
-                                                ) : (
+                                                {canEditPayments ? (
                                                     <button
                                                         onClick={() => setEditingPayment(p)}
                                                         className="font-semibold text-green-600 hover:text-primary-700 hover:underline decoration-dotted underline-offset-4 transition inline-flex items-center gap-1"
@@ -401,6 +479,15 @@ export default function ReceivableShow({ order, bankAccounts }) {
                                                     >
                                                         {formatCurrency(p.amount)}
                                                         <Pencil size={12} className="text-gray-300" strokeWidth={2} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setUnlocking(true)}
+                                                        className="font-semibold text-green-600 hover:text-primary-700 transition inline-flex items-center gap-1"
+                                                        title="Venda quitada — desbloquear com senha de administrador"
+                                                    >
+                                                        {formatCurrency(p.amount)}
+                                                        <Lock size={12} className="text-gray-300" strokeWidth={2} />
                                                     </button>
                                                 )}
                                             </td>
@@ -427,6 +514,10 @@ export default function ReceivableShow({ order, bankAccounts }) {
                 bankAccounts={bankAccounts}
                 onClose={() => setEditingPayment(null)}
             />
+
+            {unlocking && (
+                <UnlockPaymentsModal order={order} onClose={() => setUnlocking(false)} />
+            )}
         </AppLayout>
     );
 }

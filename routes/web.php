@@ -237,6 +237,8 @@ Route::middleware(['auth', 'user.active'])->group(function () {
         ->middleware('module:receivables,view')->name('receivables.show');
     Route::post('recebimentos/{order}/pagamento', [ReceivableController::class, 'storePayment'])
         ->middleware('module:receivables,create')->name('receivables.payments.store');
+    Route::post('recebimentos/{order}/desbloquear-edicao', [ReceivableController::class, 'unlockEdit'])
+        ->middleware('module:receivables,edit')->name('receivables.unlock-edit');
     Route::put('recebimentos/pagamentos/{payment}', [ReceivableController::class, 'updatePayment'])
         ->middleware('module:receivables,edit')->name('receivables.payments.update');
     Route::post('recebimentos/pagamentos/{payment}/comprovante', [ReceivableController::class, 'storeReceipt'])

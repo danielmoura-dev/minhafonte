@@ -89,6 +89,8 @@ class ReceivableController extends Controller
         return Inertia::render('Receivables/Show', [
             'order'        => $order,
             'bankAccounts' => $bankAccounts,
+            // Venda quitada só corrige depois de liberar por senha
+            'canEditPayments' => $this->canEditPayments($order),
         ]);
     }
 
@@ -139,8 +141,46 @@ class ReceivableController extends Controller
     }
 
     /**
-     * Corrige um pagamento já lançado (ex.: valor digitado errado).
-     * Permitido apenas enquanto a venda não estiver totalmente paga.
+     * Libera a correção dos pagamentos de uma venda já quitada.
+     *
+     * Sem isso, um lançamento na conta bancária errada ficaria travado para
+     * sempre — e é justamente o que quebra a conferência do caixa.
+     */
+    public function unlockEdit(Request $request, Order $order): RedirectResponse
+    {
+        abort_unless($order->company_id === Tenant::id(), 403);
+
+        $request->validate(['admin_password' => ['required', 'string']], [
+            'admin_password.required' => 'Informe a senha de administrador.',
+        ]);
+
+        if (! Tenant::company()->checkAdminPassword($request->input('admin_password'))) {
+            return back()->withErrors(['admin_password' => 'Senha incorreta.']);
+        }
+
+        session()->put("receivable_edit_unlocked.{$order->id}", true);
+
+        AuditService::log(
+            event:       'order.payments_unlocked',
+            auditable:   $order,
+            description: "Correção dos pagamentos da Venda #{$order->order_number} liberada por senha de administrador.",
+        );
+
+        return back()->with('success', 'Correção liberada. Clique no valor do pagamento para ajustar.');
+    }
+
+    /**
+     * Venda em aberto corrige livre; venda quitada exige desbloqueio por senha.
+     */
+    private function canEditPayments(Order $order): bool
+    {
+        return $order->payment_status !== 'paid'
+            || (bool) session("receivable_edit_unlocked.{$order->id}");
+    }
+
+    /**
+     * Corrige um pagamento já lançado (valor, forma, conta de destino, data).
+     * Numa venda quitada, exige o desbloqueio por senha de administrador.
      */
     public function updatePayment(Request $request, OrderPayment $payment): RedirectResponse
     {
@@ -149,8 +189,8 @@ class ReceivableController extends Controller
         $order = $payment->order;   // null se a venda foi excluída
         abort_unless($order, 404);
 
-        if ($order->payment_status === 'paid') {
-            return back()->with('error', 'Esta venda já está totalmente paga — não é possível alterar os pagamentos.');
+        if (! $this->canEditPayments($order)) {
+            return back()->with('error', 'Venda quitada: informe a senha de administrador para corrigir os pagamentos.');
         }
 
         $data = $request->validate([
@@ -164,6 +204,13 @@ class ReceivableController extends Controller
             'amount.gt'       => 'O valor deve ser maior que zero.',
             'method.required' => 'Selecione a forma de pagamento.',
         ]);
+
+        $oldValues = [
+            'amount'          => (float) $payment->amount,
+            'method'          => $payment->method,
+            'bank_account_id' => $payment->bank_account_id,
+            'paid_at'         => (string) $payment->paid_at,
+        ];
 
         $oldAmount = (float) $payment->amount;
         $newAmount = round((float) $data['amount'], 2);
@@ -189,12 +236,37 @@ class ReceivableController extends Controller
         // Reflete o novo valor no saldo e no status da venda
         $order->recalculatePayment();
 
+        // Descreve o que realmente mudou — a troca de conta é o caso mais
+        // comum e o que quebra a conferência do caixa quando passa batido.
+        $mudancas = [];
+
+        if (abs($oldAmount - (float) $payment->amount) > 0.001) {
+            $mudancas[] = "valor de {$this->money($oldAmount)} para {$this->money((float) $payment->amount)}";
+        }
+
+        if ($oldValues['bank_account_id'] !== $payment->bank_account_id) {
+            $de   = BankAccount::find($oldValues['bank_account_id'])?->name ?? 'sem conta';
+            $para = BankAccount::find($payment->bank_account_id)?->name ?? 'sem conta';
+            $mudancas[] = "conta de '{$de}' para '{$para}'";
+        }
+
+        if ($oldValues['method'] !== $payment->method) {
+            $mudancas[] = "forma de pagamento";
+        }
+
         AuditService::log(
             event:       'order.payment_updated',
             auditable:   $order->refresh(),
-            oldValues:   ['amount' => $oldAmount],
-            newValues:   ['amount' => (float) $payment->amount, 'payment_status' => $order->payment_status],
-            description: "Pagamento da Venda #{$order->order_number} corrigido de R$ {$oldAmount} para R$ {$payment->amount}.",
+            oldValues:   $oldValues,
+            newValues:   [
+                'amount'          => (float) $payment->amount,
+                'method'          => $payment->method,
+                'bank_account_id' => $payment->bank_account_id,
+                'paid_at'         => (string) $payment->paid_at,
+                'payment_status'  => $order->payment_status,
+            ],
+            description: "Pagamento da Venda #{$order->order_number} corrigido"
+                . ($mudancas ? ': ' . implode('; ', $mudancas) . '.' : '.'),
         );
 
         return back()->with('success', 'Pagamento corrigido com sucesso!');
